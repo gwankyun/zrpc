@@ -17,24 +17,33 @@ project(zrpc)
 add_compile_options(
   "$<$<CXX_COMPILER_ID:MSVC>:/W4;/MP>")
 
+find_package(Boost 1.74.0 REQUIRED)
+
 # 執行文件
 add_executable(server)
 
 # 添加源碼
-target_sources(server PRIVATE src/server.cpp)
+target_sources(server PRIVATE src/server.cpp include/log.hpp include/zrpc.hpp)
 
 # 頭文件目錄
 target_include_directories(server
   PRIVATE
-    include)
+    include
+    ${Boost_INCLUDE_DIRS})
+
+target_compile_features(server PRIVATE cxx_std_17)
 
 # 執行文件
 add_executable(client)
 
 # 添加源碼
-target_sources(client PRIVATE src/client.cpp)
+target_sources(client PRIVATE src/client.cpp include/log.hpp include/zrpc.hpp)
 
 # 頭文件目錄
 target_include_directories(client
   PRIVATE
-    include)
+    D:/local/boost_1_74_0/tmp
+    include
+    ${Boost_INCLUDE_DIRS})
+
+target_compile_features(client PRIVATE cxx_std_17)

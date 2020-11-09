@@ -1,22 +1,23 @@
 ﻿#include <iostream>
 #include <string>
-//#include "../include/zrpc.hpp"
+#include <memory>
+#define ZRPC_HAS_CXX_11 0
+#define ZRPC_SHARED_PTR std::shared_ptr
 #include <zrpc.hpp>
 
 int main()
 {
+    //spdlog::easy::initialize();
+    LOG(info, "client");
     try
     {
-        asio::io_context io_context;
+        zrpc::io_context io_context;
 
-        auto socket = std::make_shared<asio::ip::tcp::socket>(io_context);
-        zrpc::Client client(socket);
-        client.connect("127.0.0.1", 12345);
+        zrpc::Client<zrpc::ip::tcp> client(io_context);
+        client.connect("127.0.0.1", 3344);
 
         LOG(info, "1 + 1 = {}", client.call<int>("add", 1, 1));
         LOG(info, "1 + 9 = {}", client.call<int>("add", 1, 9));
-
-        io_context.run();
     }
     catch (const std::exception& e)
     {
