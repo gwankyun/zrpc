@@ -1,6 +1,6 @@
 #pragma once
 #include "zrpc.h"
-#include <msgpack_easy.hpp>
+//#include <msgpack_easy.hpp>
 
 #if ZRPC_CXX_STD_11
 #include <log.hpp>
@@ -46,130 +46,6 @@ namespace zrpc
         };
 
         template<typename T>
-        class shared_ptr
-        {
-        public:
-            struct Helper
-            {
-                Helper()
-                    : data(NULL)
-                    , count(1)
-                {
-                }
-
-                Helper(T* data_)
-                    : data(data_)
-                    , count(1)
-                {
-                }
-
-                ~Helper()
-                {
-                    if (data != NULL)
-                    {
-                        delete data;
-                        data = NULL;
-                    }
-                }
-
-                T* data;
-                int count;
-            };
-
-            shared_ptr()
-                : helper(NULL)
-            {
-                //LOG(info, "");
-            }
-
-            shared_ptr(T* data_)
-                : helper(new Helper(data_))
-            {
-                //LOG(info, "");
-            }
-
-            shared_ptr(const shared_ptr& other)
-                : helper(other.helper)
-            {
-                if (helper != NULL)
-                {
-                    helper->count++;
-                }
-            }
-
-            shared_ptr& operator=(const shared_ptr& other)
-            {
-                if (helper != NULL)
-                {
-                    helper->count--;
-                }
-                helper = other.helper;
-                helper->count++;
-                return *this;
-            }
-
-            void reset()
-            {
-                if (helper != NULL)
-                {
-                    helper->count--;
-                    helper = NULL;
-                }
-            }
-
-            void reset(T* data_)
-            {
-                reset();
-                helper = new Helper(data_);
-            }
-
-            ~shared_ptr()
-            {
-                if (helper != NULL)
-                {
-                    helper->count--;
-                    if (helper->count == 0)
-                    {
-                        delete helper;
-                        helper = NULL;
-                    }
-                }
-            }
-
-            T* get() const
-            {
-                if (helper == NULL)
-                {
-                    return NULL;
-                }
-                return helper->data;
-            }
-
-            T& operator*() const
-            {
-                //LOG(info, "helper == NULL: {}", helper == NULL);
-                if (helper == NULL)
-                {
-                    return *((T*)0);
-                }
-                return *(helper->data);
-            }
-
-            T* operator->() const
-            {
-                return helper->data;
-            }
-
-            operator bool() const
-            {
-                return get() != NULL;
-            }
-
-        private:
-            Helper* helper;
-        };
-
-        template<typename T>
         class vector
         {
         public:
@@ -180,6 +56,7 @@ namespace zrpc
 
             vector(std::size_t size, T val)
                 : data_(new T[size])
+                , size_(size)
             {
                 std::fill(data_, data_ + size, val);
             }
@@ -189,6 +66,7 @@ namespace zrpc
                 if (data_ != NULL)
                 {
                     delete[] data_;
+                    data_ = NULL;
                 }
             }
 
@@ -197,36 +75,102 @@ namespace zrpc
                 return data_;
             }
 
+            std::size_t size()
+            {
+                return size_;
+            }
+
         private:
             T* data_;
+            std::size_t size_;
         };
 
-#if ZRPC_CXX_STD_11
-        template<typename Arg, typename ...Args>
-        void pack(std::vector<std::string>& buffer, Arg&& arg, Args&& ...args)
+        struct ICallable
         {
-            buffer.push_back(msgpack::easy::pack(arg));
-            pack(buffer, std::forward<Args...>(args)...);
+            ICallable()
+            {
+            }
+
+            virtual ~ICallable()
+            {
+            }
+
+            virtual std::string call(std::string param) = 0;
+        };
+
+#if ZRPC_HAS_CXX_11
+        template<typename R, typename... Args>
+        struct Callable : public ICallable
+        {
+            Callable(boost::function<R(Args...)> func_)
+                : func(func_)
+            {
+            }
+
+            ~Callable()
+            {
+            }
+
+            std::string call(std::string param) override
+            {
+                msgpack::type::tuple<Args...> args;
+                unpack(param, args);
+                R result = lite::apply(func, args);
+                return pack(result);
+            }
+
+            boost::function<R(Args...)> func;
+        };
+
+        template<typename R, typename... Args>
+        std::shared_ptr<ICallable> makeCallable(std::function<R(Args...)> func_)
+        {
+            return std::make_shared<Callable<R, Args...>>(func_);
         }
 
-        template<typename Arg>
-        void pack(std::vector<std::string>& buffer, Arg&& arg)
+        template<typename R, typename... Args>
+        std::shared_ptr<ICallable> makeCallable(R(*func_)(Args...))
         {
-            buffer.push_back(msgpack::easy::pack(arg));
+            return std::make_shared<Callable<R, Args...>>(func_);
+        }
+#else
+#  define ZRPC_CALLABLE(z, n, _) \
+        template< \
+            typename R BOOST_PP_COMMA_IF(n) \
+            BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPENAME, T)> \
+        struct BOOST_PP_CAT(Callable, n) : public ICallable \
+        { \
+            BOOST_PP_CAT(Callable, n)( \
+                boost::function<R(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T))> func_) \
+                : func(func_) \
+            { \
+            } \
+            ~BOOST_PP_CAT(Callable, n)() \
+            { \
+            } \
+            std::string call(std::string param) \
+            { \
+                msgpack::type::tuple<BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)> args; \
+                msgpack::easy::unpack(param, args); \
+                R result = lite::apply(func, args); \
+                return msgpack::easy::pack(result); \
+            } \
+            boost::function<R(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T))> func; \
+        }; \
+        template< \
+            typename R BOOST_PP_COMMA_IF(n) \
+            BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPENAME, T)> \
+        boost::shared_ptr<ICallable> makeCallable(boost::function<R(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T))> func_) \
+        { \
+            return booot::make_shared<BOOST_PP_CAT(Callable, n)<R BOOST_PP_COMMA_IF(n) BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)> >(func_); \
+        } \
+        template<typename R BOOST_PP_COMMA_IF(n) BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPENAME, T)> \
+        boost::shared_ptr<ICallable> makeCallable(R(*func_)(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T))) \
+        { \
+            return boost::make_shared<BOOST_PP_CAT(Callable, n)<R BOOST_PP_COMMA_IF(n) BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)> >(func_); \
         }
 
-        template<typename Arg, typename ...Args>
-        void unpack(std::vector<std::string>& buffer, int index, Arg& arg, Args& ...args)
-        {
-            msgpack::easy::unpack(buffer[index], arg);
-            unpack(buffer, index + 1, std::forward<Args&...>(args)...);
-        }
-
-        template<typename Arg>
-        void unpack(std::vector<std::string>& buffer, int index, Arg& arg)
-        {
-            msgpack::easy::unpack(buffer[index], arg);
-        }
-#endif // ZRPC_CXX_STD_11
+        BOOST_PP_REPEAT(10, ZRPC_CALLABLE, _)
+#endif // ZRPC_HAS_CXX_11
     }
 }

@@ -1,20 +1,37 @@
 #pragma once
 #include <map> // std::map
 #include <functional> // std::function
-#include <tuple>
-//#include <tuple>
 #include "zrpc.h"
 #include <asio.hpp>
 #include <asio/coroutine.hpp>
-//#include <asio/yield.hpp>
-#include <boost/preprocessor.hpp>
-#include <boost/function.hpp>
-#include <boost/tuple/tuple.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/make_shared.hpp>
+
+#if ZRPC_HAS_CXX_11
+#  include <tuple>
+#else
+#  include <boost/preprocessor.hpp>
+#  include <boost/function.hpp>
+#  include <boost/tuple/tuple.hpp>
+#  include <boost/shared_ptr.hpp>
+#  include <boost/make_shared.hpp>
+#endif // ZRPC_HAS_CXX_11
+
+#ifndef ZRPC_SHARED_PTR
+#  if ZRPC_HAS_CXX_11
+#    define ZRPC_SHARED_PTR std::shared_ptr
+#  else
+#    define ZRPC_SHARED_PTR boost::shared_ptr
+#  endif // ZRPC_HAS_CXX_11
+#endif // !ZRPC_SHARED_PTR
+
+#if defined(__cpp_lib_apply)
+#  define ZRPC_APPLY(fn, ...) std::apply(fn, ##__VA_ARGS__)
+#else
+#  include <apply.hpp>
+#  define ZRPC_APPLY(fn, ...) lite::apply(fn, ##__VA_ARGS__)
+#endif // defined(__cpp_lib_apply)
 
 #ifndef ASYNC_WRITE
-#define ASYNC_WRITE(socket_, data_, len_, per_, offset_, bytes_transferred_) \
+#  define ASYNC_WRITE(socket_, data_, len_, per_, offset_, bytes_transferred_) \
     offset_ = 0; \
     do \
     { \
@@ -27,12 +44,12 @@
 #endif // !ASYNC_WRITE
 
 #ifndef ASYNC_WRITE_ALL
-#define ASYNC_WRITE_ALL(socket_, data_, len_, offset_, bytes_transferred_) \
+#  define ASYNC_WRITE_ALL(socket_, data_, len_, offset_, bytes_transferred_) \
     ASYNC_WRITE(socket_, data_, len_, len_, offset_, bytes_transferred_)
 #endif // !ASYNC_WRITE_ALL
 
 #ifndef ASYNC_READ
-#define ASYNC_READ(socket_, data_, len_, per_, offset_, bytes_transferred_) \
+#  define ASYNC_READ(socket_, data_, len_, per_, offset_, bytes_transferred_) \
     offset_ = 0; \
     do \
     { \
@@ -45,105 +62,9 @@
 #endif // !ASYNC_READ
 
 #ifndef ASYNC_READ_ALL
-#define ASYNC_READ_ALL(socket_, data_, len_, offset_, bytes_transferred_) \
+#  define ASYNC_READ_ALL(socket_, data_, len_, offset_, bytes_transferred_) \
     ASYNC_READ(socket_, data_, len_, len_, offset_, bytes_transferred_)
 #endif // !ASYNC_READ
-
-struct ICallable
-{
-    ICallable()
-    {
-    }
-
-    virtual ~ICallable()
-    {
-    }
-
-    virtual std::string call(std::string param) = 0;
-};
-
-#if ZRPC_HAS_CXX_11
-template<typename R, typename... Args>
-struct Callable : public ICallable
-{
-    Callable(std::function<R(Args...)> func_)
-        : func(func_)
-    {
-    }
-
-    ~Callable()
-    {
-    }
-
-    std::string call(std::string param) override
-    {
-        std::tuple<Args...> args;
-        msgpack::easy::unpack(param, args);
-        R result = std::apply(func, args);
-        return msgpack::easy::pack(result);
-    }
-
-    std::function<R(Args...)> func;
-};
-
-template<typename R, typename... Args>
-std::shared_ptr<ICallable> makeCallable(std::function<R(Args...)> func_)
-{
-    return std::make_shared<Callable<R, Args...>>(func_);
-}
-
-template<typename R, typename... Args>
-std::shared_ptr<ICallable> makeCallable(R(*func_)(Args...))
-{
-    return std::make_shared<Callable<R, Args...>>(func_);
-}
-#else
-
-#ifndef ZRPC_TYPENAME
-#  define ZRPC_TYPENAME(z, n, x) , typename x##n
-#endif // !ZRPC_TYPENAME
-
-#ifndef ZRPC_TYPE
-#  define ZRPC_TYPE(z, n, x) BOOST_PP_COMMA_IF(n) x##n
-#endif // !ZRPC_TYPE
-
-#ifndef BOOST_PP_REPEAT_Z
-#  define BOOST_PP_REPEAT_Z(z) BOOST_PP_REPEAT_##z
-#endif // !BOOST_PP_REPEAT_Z
-
-#define CALLABLE(z, n, _) \
-    template<typename R BOOST_PP_REPEAT_Z(z)(n, ZRPC_TYPENAME, T)> \
-    struct BOOST_PP_CAT(Callable, n) : public ICallable \
-    { \
-        BOOST_PP_CAT(Callable, n)(boost::function<R(BOOST_PP_REPEAT_Z(z)(n, ZRPC_TYPE, T))> func_) \
-            : func(func_) \
-        { \
-        } \
-        ~BOOST_PP_CAT(Callable, n)() \
-        { \
-        } \
-        std::string call(std::string param) \
-        { \
-            msgpack::type::tuple<BOOST_PP_REPEAT_Z(z)(n, ZRPC_TYPE, T)> args; \
-            msgpack::easy::unpack(param, args); \
-            R result; \
-            return msgpack::easy::pack(result); \
-        } \
-        std::function<R(BOOST_PP_REPEAT_Z(z)(n, ZRPC_TYPE, T))> func; \
-    }; \
-    template<typename R BOOST_PP_REPEAT_Z(z)(n, ZRPC_TYPENAME, T)> \
-    boost::shared_ptr<ICallable> makeCallable(boost::function<R(BOOST_PP_REPEAT_Z(z)(n, ZRPC_TYPE, T))> func_) \
-    { \
-        return booot::make_shared<BOOST_PP_CAT(Callable, n)<R BOOST_PP_COMMA_IF(n) BOOST_PP_REPEAT_Z(z)(n, ZRPC_TYPE, T)> >(func_); \
-    } \
-    template<typename R BOOST_PP_REPEAT_Z(z)(n, ZRPC_TYPENAME, T)> \
-    boost::shared_ptr<ICallable> makeCallable(R(*func_)(BOOST_PP_REPEAT_Z(z)(n, ZRPC_TYPE, T))) \
-    { \
-        return boost::make_shared<BOOST_PP_CAT(Callable, n)<R BOOST_PP_COMMA_IF(n) BOOST_PP_REPEAT_Z(z)(n, ZRPC_TYPE, T)> >(func_); \
-    }
-
-BOOST_PP_REPEAT_FROM_TO(1, 10, CALLABLE, _)
-#endif // ZRPC_HAS_CXX_11
 
 namespace zrpc
 {
@@ -160,7 +81,7 @@ namespace zrpc
         }
 
         explicit Server(
-            io_context& context,
+            asio::io_context& context,
             Protocol protocol, uint16_t port
         )
             : acceptor(new Protocol::acceptor(context, Protocol::endpoint(protocol, port)))
@@ -173,12 +94,11 @@ namespace zrpc
         {
         }
 
-#if ZRPC_CXX_STD_11
-        using FnType = std::shared_ptr<ICallable>;
+#if ZRPC_HAS_CXX_11
+        using FnType = ZRPC_SHARED_PTR<detail::ICallable>;
 #else
-        //typedef std::string(*FnType)(std::string);
-        typedef boost::shared_ptr<ICallable> FnType;
-#endif // ZRPC_CXX_STD_11
+        typedef ZRPC_SHARED_PTR<detail::ICallable> FnType;
+#endif // ZRPC_HAS_CXX_11
 
         std::string invoke(const detail::Call& inArg)
         {
@@ -189,29 +109,9 @@ namespace zrpc
             }
             else
             {
-                return msgpack::easy::pack(std::string(""));
+                return pack(std::string(""));
             }
         }
-
-#if ZRPC_CXX_STD_11
-        template<typename Fn>
-        void bind(std::string func, Fn fn)
-        {
-            if (!process)
-            {
-                process.reset(new std::map<std::string, FnType>());
-            }
-            (*process)[func] = makeCallable(fn);
-        }
-#else
-        //void bind(std::string func, FnType fn)
-        //{
-        //    if (!process)
-        //    {
-        //        process.reset(new std::map<std::string, FnType>());
-        //    }
-        //    (*process)[func] = fn;
-        //}
 
         template<typename Fn>
         void bind(std::string func, Fn fn)
@@ -220,9 +120,8 @@ namespace zrpc
             {
                 process.reset(new std::map<std::string, FnType>());
             }
-            (*process)[func] = makeCallable(fn);
+            (*process)[func] = detail::makeCallable(fn);
         }
-#endif // ZRPC_CXX_STD_11
 
         void operator()(asio::error_code error = asio::error_code(), std::size_t bytes_transferred = 0);
 
@@ -232,13 +131,13 @@ namespace zrpc
         bool child;
         bool enable;
 
-        detail::shared_ptr<typename Protocol::acceptor> acceptor;
-        detail::shared_ptr<typename Protocol::socket> socket;
-        detail::shared_ptr<detail::Call> call;
-        detail::shared_ptr<std::string> send;
-        detail::shared_ptr<detail::Header> header;
-        detail::shared_ptr<detail::vector<char>> recv;
-        detail::shared_ptr<std::map<std::string, FnType>> process;
+        ZRPC_SHARED_PTR< typename Protocol::acceptor > acceptor;
+        ZRPC_SHARED_PTR< typename Protocol::socket > socket;
+        ZRPC_SHARED_PTR< detail::Call > call;
+        ZRPC_SHARED_PTR< std::string > send;
+        ZRPC_SHARED_PTR< detail::Header> header;
+        ZRPC_SHARED_PTR< detail::vector<char> > recv;
+        ZRPC_SHARED_PTR< std::map<std::string, FnType> > process;
     };
 
     template<typename Protocol>
@@ -278,7 +177,7 @@ namespace zrpc
                 LOG_IF(info, enable, "read body");
 
                 call.reset(new Call());
-                msgpack::easy::unpack(recv->data(), *call);
+                unpack(recv->data(), recv->size(), *call);
                 LOG_IF(info, enable, "func: {}", call->func);
 
                 send.reset(new std::string());
