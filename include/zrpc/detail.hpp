@@ -1,6 +1,7 @@
 #pragma once
 #include "zrpc.h"
 //#include <msgpack_easy.hpp>
+#include <boost/algorithm/hex.hpp>
 
 #if ZRPC_CXX_STD_11
 #include <log.hpp>
@@ -25,6 +26,25 @@ namespace zrpc
             uint16_t major;
             uint16_t minor;
         };
+
+        template<typename T>
+        inline void hex(const Header& header, T result)
+        {
+            boost::algorithm::hex(
+                (const char*)(&header),
+                (const char*)(&header) + sizeof(header),
+                result);
+        }
+
+        inline std::string hex(const std::string& buffer)
+        {
+            std::string result;
+            boost::algorithm::hex(
+                buffer.begin(),
+                buffer.end(),
+                std::back_inserter(result));
+            return result;
+        }
 
         inline void initialize(Header& header)
         {
@@ -102,7 +122,7 @@ namespace zrpc
         template<typename R, typename... Args>
         struct Callable : public ICallable
         {
-            Callable(boost::function<R(Args...)> func_)
+            Callable(ZRPC_FUNCTION<R(Args...)> func_)
                 : func(func_)
             {
             }
@@ -114,24 +134,28 @@ namespace zrpc
             std::string call(std::string param) override
             {
                 msgpack::type::tuple<Args...> args;
-                unpack(param, args);
+                bool r = tryUnpack(param.c_str(), param.size(), args);
+                if (!r)
+                {
+                    return "";
+                }
                 R result = lite::apply(func, args);
                 return pack(result);
             }
 
-            boost::function<R(Args...)> func;
+            ZRPC_FUNCTION<R(Args...)> func;
         };
 
         template<typename R, typename... Args>
-        std::shared_ptr<ICallable> makeCallable(std::function<R(Args...)> func_)
+        ZRPC_SHARED_PTR<ICallable> makeCallable(std::function<R(Args...)> func_)
         {
-            return std::make_shared<Callable<R, Args...>>(func_);
+            return ZRPC_MAKE_SHARED<Callable<R, Args...>>(func_);
         }
 
         template<typename R, typename... Args>
-        std::shared_ptr<ICallable> makeCallable(R(*func_)(Args...))
+        ZRPC_SHARED_PTR<ICallable> makeCallable(R(*func_)(Args...))
         {
-            return std::make_shared<Callable<R, Args...>>(func_);
+            return ZRPC_MAKE_SHARED<Callable<R, Args...>>(func_);
         }
 #else
 #  define ZRPC_CALLABLE(z, n, _) \
@@ -141,7 +165,7 @@ namespace zrpc
         struct BOOST_PP_CAT(Callable, n) : public ICallable \
         { \
             BOOST_PP_CAT(Callable, n)( \
-                boost::function<R(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T))> func_) \
+                ZRPC_FUNCTION<R(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T))> func_) \
                 : func(func_) \
             { \
             } \
@@ -151,23 +175,27 @@ namespace zrpc
             std::string call(std::string param) \
             { \
                 msgpack::type::tuple<BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)> args; \
-                msgpack::easy::unpack(param, args); \
+                bool u = tryUnpack(param.c_str(), parm.size(), args); \
+                if (!u) \
+                { \
+                    return ""; \
+                } \
                 R result = lite::apply(func, args); \
-                return msgpack::easy::pack(result); \
+                return pack(result); \
             } \
-            boost::function<R(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T))> func; \
+            ZRPC_FUNCTION<R(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T))> func; \
         }; \
         template< \
             typename R BOOST_PP_COMMA_IF(n) \
             BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPENAME, T)> \
-        boost::shared_ptr<ICallable> makeCallable(boost::function<R(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T))> func_) \
+        ZRPC_SHARED_PTR<ICallable> makeCallable(ZRPC_FUNCTION<R(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T))> func_) \
         { \
-            return booot::make_shared<BOOST_PP_CAT(Callable, n)<R BOOST_PP_COMMA_IF(n) BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)> >(func_); \
+            return ZRPC_MAKE_SHARED<BOOST_PP_CAT(Callable, n)<R BOOST_PP_COMMA_IF(n) BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)> >(func_); \
         } \
         template<typename R BOOST_PP_COMMA_IF(n) BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPENAME, T)> \
-        boost::shared_ptr<ICallable> makeCallable(R(*func_)(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T))) \
+        ZRPC_SHARED_PTR<ICallable> makeCallable(R(*func_)(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T))) \
         { \
-            return boost::make_shared<BOOST_PP_CAT(Callable, n)<R BOOST_PP_COMMA_IF(n) BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)> >(func_); \
+            return ZRPC_MAKE_SHARED<BOOST_PP_CAT(Callable, n)<R BOOST_PP_COMMA_IF(n) BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)> >(func_); \
         }
 
         BOOST_PP_REPEAT(10, ZRPC_CALLABLE, _)

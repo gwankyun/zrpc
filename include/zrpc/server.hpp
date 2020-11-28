@@ -4,6 +4,7 @@
 #include "zrpc.h"
 #include <asio.hpp>
 #include <asio/coroutine.hpp>
+#include <boost/algorithm/hex.hpp>
 
 #if ZRPC_HAS_CXX_11
 #  include <tuple>
@@ -15,13 +16,13 @@
 #  include <boost/make_shared.hpp>
 #endif // ZRPC_HAS_CXX_11
 
-#ifndef ZRPC_SHARED_PTR
+#ifndef ZRPC_USING
 #  if ZRPC_HAS_CXX_11
-#    define ZRPC_SHARED_PTR std::shared_ptr
+#    define ZRPC_USING(n, o) using n = o
 #  else
-#    define ZRPC_SHARED_PTR boost::shared_ptr
+#    define ZRPC_USING(n, o) typedef o n
 #  endif // ZRPC_HAS_CXX_11
-#endif // !ZRPC_SHARED_PTR
+#endif // !ZRPC_USING
 
 #if defined(__cpp_lib_apply)
 #  define ZRPC_APPLY(fn, ...) std::apply(fn, ##__VA_ARGS__)
@@ -94,11 +95,7 @@ namespace zrpc
         {
         }
 
-#if ZRPC_HAS_CXX_11
-        using FnType = ZRPC_SHARED_PTR<detail::ICallable>;
-#else
-        typedef ZRPC_SHARED_PTR<detail::ICallable> FnType;
-#endif // ZRPC_HAS_CXX_11
+        ZRPC_USING(FnType, ZRPC_SHARED_PTR<detail::ICallable>);
 
         std::string invoke(const detail::Call& inArg)
         {
@@ -109,7 +106,7 @@ namespace zrpc
             }
             else
             {
-                return pack(std::string(""));
+                return detail::pack(std::string(""));
             }
         }
 
@@ -130,13 +127,15 @@ namespace zrpc
         std::size_t offset;
         bool child;
         bool enable;
+        bool result;
 
         ZRPC_SHARED_PTR< typename Protocol::acceptor > acceptor;
         ZRPC_SHARED_PTR< typename Protocol::socket > socket;
         ZRPC_SHARED_PTR< detail::Call > call;
         ZRPC_SHARED_PTR< std::string > send;
-        ZRPC_SHARED_PTR< detail::Header> header;
+        ZRPC_SHARED_PTR< detail::Header > header;
         ZRPC_SHARED_PTR< detail::vector<char> > recv;
+        ZRPC_SHARED_PTR< std::string > hex;
         ZRPC_SHARED_PTR< std::map<std::string, FnType> > process;
     };
 
@@ -172,12 +171,21 @@ namespace zrpc
                 ASYNC_READ_ALL(socket, header.get(), sizeof(*header), offset, bytes_transferred);
                 LOG_IF(info, enable, "read header: {}", header->length);
 
+                hex.reset(new std::string());
+                detail::hex(*header, std::back_inserter(*hex));
+                zdbg(*hex, hex->size());
+
                 recv.reset(new detail::vector<char>(header->length + 1, '\0'));
                 ASYNC_READ_ALL(socket, recv->data(), header->length, offset, bytes_transferred);
                 LOG_IF(info, enable, "read body");
 
+                hex.reset(new std::string());
+                boost::algorithm::hex(recv->data(), recv->data() + recv->size(), std::back_inserter(*hex));
+                zdbg(*hex);
+
                 call.reset(new Call());
-                unpack(recv->data(), recv->size(), *call);
+                result = tryUnpack(recv->data(), recv->size(), *call);
+                zdbg(result);
                 LOG_IF(info, enable, "func: {}", call->func);
 
                 send.reset(new std::string());
@@ -195,7 +203,7 @@ namespace zrpc
         }
         else
         {
-            LOG_IF(info, enable, error.message());
+            zdbg(error.message());
         }
     }
 }
