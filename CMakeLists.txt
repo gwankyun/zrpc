@@ -14,7 +14,7 @@ include(CMakePrintHelpers)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
 add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/W4;/MP;/Zc:__cplusplus;>")
-add_compile_definitions("ZRPC_HAS_CXX_11=1")
+add_compile_definitions("ZRPC_HAS_CXX_11=0")
 
 if(NOT dbg_macro_ROOT)
   message(FATAL_ERROR "must set dbg_macro_ROOT")

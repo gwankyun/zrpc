@@ -16,6 +16,13 @@ int add(int a, int b)
     return a + b;
 }
 
+std::vector<char> getVector(int n)
+{
+    dbg(n);
+    std::vector<char> vec(n, '\0');
+    return vec;
+}
+
 int main()
 {
     //spdlog::easy::initialize(20, 30);
@@ -24,7 +31,10 @@ int main()
 
     {
         zrpc::Server<asio::ip::tcp> server(io_context, asio::ip::tcp::v4(), 3344);
+        //ZRPC_SHARED_PTR< zrpc::Server<asio::ip::tcp> > server(ZRPC_MAKE_SHARED< zrpc::Server<asio::ip::tcp> >(io_context, asio::ip::tcp::v4(), 3344));
+        server.setTimeout(3 * 1000);
         server.bind("add", add);
+        server.bind("getVector", getVector);
         try
         {
             server();

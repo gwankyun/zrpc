@@ -50,7 +50,7 @@
 #  if ZRPC_DEBUG && defined(dbg)
 #    define zdbg(...) dbg(##__VA_ARGS__)
 #  else
-#    define zdbg(...)
+#    define zdbg(x) std::cout << __func__ << ":" << __LINE__ << " " << x << std::endl
 #  endif // ZRPC_DEBUG && defined(dbg)
 #endif // !zdbg
 

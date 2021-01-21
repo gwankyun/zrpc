@@ -71,7 +71,7 @@ namespace zrpc
                     asio::buffer((char*)&header + offset, sizeof(header) - offset));
                 offset += written;
             }
-            zdbg("read header");
+            //zdbg("read header");
 
             offset = 0;
 
@@ -83,7 +83,7 @@ namespace zrpc
                     asio::buffer(vec.data() + offset, header.length - offset));
                 offset += written;
             }
-            zdbg("read body");
+            //zdbg("read body");
 
             //std::string str;
             //boost::algorithm::hex(vec.data(), vec.data() + vec.size(), std::back_inserter(str));
@@ -194,38 +194,239 @@ namespace zrpc
             throw detail::CallException();
         }
 #else
-#  define ZRPC_TRY_CALL(z, n, _) \
-    template< \
-        typename R BOOST_PP_COMMA_IF(n) \
-        BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPENAME, T)> \
-    ZPRC_OPTIONAL<R> tryCall( \
-        std::string func BOOST_PP_COMMA_IF(n) \
-        BOOST_PP_REPEAT_Z(z, n, BOOST_PP_PARAMETER, T)) \
-    { \
-        using namespace detail; \
-        Call call; \
-        call.func = func; \
-        msgpack::type::tuple<BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)> tpl(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_ARGUMENT, T)); \
-        call.args = pack(tpl); \
-        return detail::tryCall<R, Protocol>(call, socket); \
-    }
-    BOOST_PP_REPEAT(10, ZRPC_TRY_CALL, _)
-#  define ZRPC_CALL(z, n, _) \
-    template< \
-        typename R BOOST_PP_COMMA_IF(n) \
-        BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPENAME, T)> \
-    R call( \
-        std::string func BOOST_PP_COMMA_IF(n) \
-        BOOST_PP_REPEAT_Z(z, n, BOOST_PP_PARAMETER, T)) \
-    { \
-        ZPRC_OPTIONAL<R> result(tryCall<R>(func, BOOST_PP_REPEAT_Z(z, n, BOOST_PP_ARGUMENT, T))); \
-        if (result) \
-        { \
-             return *result; \
-        } \
-        throw detail::CallException(); \
-    }
-    BOOST_PP_REPEAT(10, ZRPC_CALL, _)
+        template<typename R, typename T0>
+        ZPRC_OPTIONAL<R> tryCall(
+            std::string func,
+            T0 T0_)
+        {
+            using namespace detail;
+            Call call;
+            call.func = func;
+            msgpack::type::tuple<T0> tpl(T0_);
+            call.args = pack(tpl);
+            return detail::tryCall<R, Protocol>(call, socket);
+        }
+
+        template<typename R, BOOST_PP_REPEAT(2, BOOST_PP_TYPENAME, T)>
+        ZPRC_OPTIONAL<R> tryCall(
+            std::string func,
+            BOOST_PP_REPEAT(2, BOOST_PP_PARAMETER, T))
+        {
+            using namespace detail;
+            Call call;
+            call.func = func;
+            msgpack::type::tuple<BOOST_PP_REPEAT(2, BOOST_PP_TYPE, T)> tpl(BOOST_PP_REPEAT(2, BOOST_PP_ARGUMENT, T));
+            call.args = pack(tpl);
+            return detail::tryCall<R, Protocol>(call, socket);
+        }
+
+        template<typename R, BOOST_PP_REPEAT(3, BOOST_PP_TYPENAME, T)>
+        ZPRC_OPTIONAL<R> tryCall(
+            std::string func,
+            BOOST_PP_REPEAT(3, BOOST_PP_PARAMETER, T))
+        {
+            using namespace detail;
+            Call call;
+            call.func = func;
+            msgpack::type::tuple<BOOST_PP_REPEAT(3, BOOST_PP_TYPE, T)> tpl(BOOST_PP_REPEAT(3, BOOST_PP_ARGUMENT, T));
+            call.args = pack(tpl);
+            return detail::tryCall<R, Protocol>(call, socket);
+        }
+
+        template<typename R, BOOST_PP_REPEAT(4, BOOST_PP_TYPENAME, T)>
+        ZPRC_OPTIONAL<R> tryCall(
+            std::string func,
+            BOOST_PP_REPEAT(4, BOOST_PP_PARAMETER, T))
+        {
+            using namespace detail;
+            Call call;
+            call.func = func;
+            msgpack::type::tuple<BOOST_PP_REPEAT(4, BOOST_PP_TYPE, T)> tpl(BOOST_PP_REPEAT(4, BOOST_PP_ARGUMENT, T));
+            call.args = pack(tpl);
+            return detail::tryCall<R, Protocol>(call, socket);
+        }
+
+        template<typename R, BOOST_PP_REPEAT(5, BOOST_PP_TYPENAME, T)>
+        ZPRC_OPTIONAL<R> tryCall(
+            std::string func,
+            BOOST_PP_REPEAT(5, BOOST_PP_PARAMETER, T))
+        {
+            using namespace detail;
+            Call call;
+            call.func = func;
+            msgpack::type::tuple<BOOST_PP_REPEAT(5, BOOST_PP_TYPE, T)> tpl(BOOST_PP_REPEAT(5, BOOST_PP_ARGUMENT, T));
+            call.args = pack(tpl);
+            return detail::tryCall<R, Protocol>(call, socket);
+        }
+
+        template<typename R, BOOST_PP_REPEAT(6, BOOST_PP_TYPENAME, T)>
+        ZPRC_OPTIONAL<R> tryCall(
+            std::string func,
+            BOOST_PP_REPEAT(6, BOOST_PP_PARAMETER, T))
+        {
+            using namespace detail;
+            Call call;
+            call.func = func;
+            msgpack::type::tuple<BOOST_PP_REPEAT(6, BOOST_PP_TYPE, T)> tpl(BOOST_PP_REPEAT(6, BOOST_PP_ARGUMENT, T));
+            call.args = pack(tpl);
+            return detail::tryCall<R, Protocol>(call, socket);
+        }
+
+        template<typename R, BOOST_PP_REPEAT(7, BOOST_PP_TYPENAME, T)>
+        ZPRC_OPTIONAL<R> tryCall(
+            std::string func,
+            BOOST_PP_REPEAT(7, BOOST_PP_PARAMETER, T))
+        {
+            using namespace detail;
+            Call call;
+            call.func = func;
+            msgpack::type::tuple<BOOST_PP_REPEAT(7, BOOST_PP_TYPE, T)> tpl(BOOST_PP_REPEAT(7, BOOST_PP_ARGUMENT, T));
+            call.args = pack(tpl);
+            return detail::tryCall<R, Protocol>(call, socket);
+        }
+
+        template<typename R, BOOST_PP_REPEAT(8, BOOST_PP_TYPENAME, T)>
+        ZPRC_OPTIONAL<R> tryCall(
+            std::string func,
+            BOOST_PP_REPEAT(8, BOOST_PP_PARAMETER, T))
+        {
+            using namespace detail;
+            Call call;
+            call.func = func;
+            msgpack::type::tuple<BOOST_PP_REPEAT(8, BOOST_PP_TYPE, T)> tpl(BOOST_PP_REPEAT(8, BOOST_PP_ARGUMENT, T));
+            call.args = pack(tpl);
+            return detail::tryCall<R, Protocol>(call, socket);
+        }
+
+        template<typename R, BOOST_PP_REPEAT(9, BOOST_PP_TYPENAME, T)>
+        ZPRC_OPTIONAL<R> tryCall(
+            std::string func,
+            BOOST_PP_REPEAT(9, BOOST_PP_PARAMETER, T))
+        {
+            using namespace detail;
+            Call call;
+            call.func = func;
+            msgpack::type::tuple<BOOST_PP_REPEAT(9, BOOST_PP_TYPE, T)> tpl(BOOST_PP_REPEAT(9, BOOST_PP_ARGUMENT, T));
+            call.args = pack(tpl);
+            return detail::tryCall<R, Protocol>(call, socket);
+        }
+
+        template<typename R, typename T0>
+        R call(
+            std::string func,
+            T0 T0_)
+        {
+            ZPRC_OPTIONAL<R> result(tryCall<R>(func, T0_));
+            if (result)
+            {
+                return *result;
+            }
+            throw detail::CallException();
+        }
+
+        template<typename R, BOOST_PP_REPEAT(2, BOOST_PP_TYPENAME, T)>
+        R call(
+            std::string func,
+            BOOST_PP_REPEAT(2, BOOST_PP_PARAMETER, T))
+        {
+            ZPRC_OPTIONAL<R> result(tryCall<R>(func, BOOST_PP_REPEAT(2, BOOST_PP_ARGUMENT, T)));
+            if (result)
+            {
+                return *result;
+            }
+            throw detail::CallException();
+        }
+
+        template<typename R, BOOST_PP_REPEAT(3, BOOST_PP_TYPENAME, T)>
+        R call(
+            std::string func,
+            BOOST_PP_REPEAT(3, BOOST_PP_PARAMETER, T))
+        {
+            ZPRC_OPTIONAL<R> result(tryCall<R>(func, BOOST_PP_REPEAT(3, BOOST_PP_ARGUMENT, T)));
+            if (result)
+            {
+                return *result;
+            }
+            throw detail::CallException();
+        }
+
+        template<typename R, BOOST_PP_REPEAT(4, BOOST_PP_TYPENAME, T)>
+        R call(
+            std::string func,
+            BOOST_PP_REPEAT(4, BOOST_PP_PARAMETER, T))
+        {
+            ZPRC_OPTIONAL<R> result(tryCall<R>(func, BOOST_PP_REPEAT(4, BOOST_PP_ARGUMENT, T)));
+            if (result)
+            {
+                return *result;
+            }
+            throw detail::CallException();
+        }
+
+        template<typename R, BOOST_PP_REPEAT(5, BOOST_PP_TYPENAME, T)>
+        R call(
+            std::string func,
+            BOOST_PP_REPEAT(5, BOOST_PP_PARAMETER, T))
+        {
+            ZPRC_OPTIONAL<R> result(tryCall<R>(func, BOOST_PP_REPEAT(5, BOOST_PP_ARGUMENT, T)));
+            if (result)
+            {
+                return *result;
+            }
+            throw detail::CallException();
+        }
+
+        template<typename R, BOOST_PP_REPEAT(6, BOOST_PP_TYPENAME, T)>
+        R call(
+            std::string func,
+            BOOST_PP_REPEAT(6, BOOST_PP_PARAMETER, T))
+        {
+            ZPRC_OPTIONAL<R> result(tryCall<R>(func, BOOST_PP_REPEAT(6, BOOST_PP_ARGUMENT, T)));
+            if (result)
+            {
+                return *result;
+            }
+            throw detail::CallException();
+        }
+
+        template<typename R, BOOST_PP_REPEAT(7, BOOST_PP_TYPENAME, T)>
+        R call(
+            std::string func,
+            BOOST_PP_REPEAT(7, BOOST_PP_PARAMETER, T))
+        {
+            ZPRC_OPTIONAL<R> result(tryCall<R>(func, BOOST_PP_REPEAT(7, BOOST_PP_ARGUMENT, T)));
+            if (result)
+            {
+                return *result;
+            }
+            throw detail::CallException();
+        }
+
+        template<typename R, BOOST_PP_REPEAT(8, BOOST_PP_TYPENAME, T)>
+        R call(
+            std::string func,
+            BOOST_PP_REPEAT(8, BOOST_PP_PARAMETER, T))
+        {
+            ZPRC_OPTIONAL<R> result(tryCall<R>(func, BOOST_PP_REPEAT(8, BOOST_PP_ARGUMENT, T)));
+            if (result)
+            {
+                return *result;
+            }
+            throw detail::CallException();
+        }
+
+        template<typename R, BOOST_PP_REPEAT(9, BOOST_PP_TYPENAME, T)>
+        R call(
+            std::string func,
+            BOOST_PP_REPEAT(9, BOOST_PP_PARAMETER, T))
+        {
+            ZPRC_OPTIONAL<R> result(tryCall<R>(func, BOOST_PP_REPEAT(9, BOOST_PP_ARGUMENT, T)));
+            if (result)
+            {
+                return *result;
+            }
+            throw detail::CallException();
+        }
 #endif // ZRPC_HAS_CXX_11
 
     private:
@@ -343,7 +544,7 @@ namespace zrpc
                 zdbg(error.message());
                 return;
             }
-            zdbg("read header!");
+            //zdbg("read header!");
             ZRPC_SHARED_PTR< detail::vector<char> > vec(ZRPC_MAKE_SHARED<detail::vector<char>>(header->length + (uint32_t)1, '\0'));
             ZRPC_SHARED_PTR< Client<Protocol> > self(shared_from_this());
 #if ZRPC_HAS_CXX_11
@@ -636,22 +837,95 @@ namespace zrpc
             asyncCall<T>(call, callback);
         }
 #else
-#  define ZRPC_ASYNC_CALL(z, n, _) \
-    template< \
-        typename T, typename F BOOST_PP_COMMA_IF(n) \
-        BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPENAME, T)> \
-    void asyncCall( \
-        std::string func, \
-        F callback BOOST_PP_COMMA_IF(n) \
-        BOOST_PP_REPEAT_Z(z, n, BOOST_PP_PARAMETER, T)) \
-    { \
-        using namespace detail; \
-        Call call; \
-        call.func = func; \
-        call.args = pack(msgpack::type::tuple<BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)>(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_ARGUMENT, T))); \
-        asyncCall<T>(call, callback); \
-    }
-    BOOST_PP_REPEAT(10, ZRPC_ASYNC_CALL, _)
+        template<typename T, typename F, typename T0>
+        inline void asyncCall(std::string func, F callback, T0 T0_)
+        {
+            using namespace detail;
+            Call call;
+            call.func = func;
+            call.args = pack(msgpack::type::tuple<T0>(T0_));
+            asyncCall<T>(call, callback);
+        }
+
+        template<typename T, typename F, BOOST_PP_REPEAT(2, BOOST_PP_TYPENAME, T)>
+        inline void asyncCall(std::string func, F callback, BOOST_PP_REPEAT(2, BOOST_PP_PARAMETER, T))
+        {
+            using namespace detail;
+            Call call;
+            call.func = func;
+            call.args = pack(msgpack::type::tuple<BOOST_PP_REPEAT(2, BOOST_PP_TYPE, T)>(BOOST_PP_REPEAT(2, BOOST_PP_ARGUMENT, T)));
+            asyncCall<T>(call, callback);
+        }
+
+        template<typename T, typename F, BOOST_PP_REPEAT(3, BOOST_PP_TYPENAME, T)>
+        inline void asyncCall(std::string func, F callback, BOOST_PP_REPEAT(3, BOOST_PP_PARAMETER, T))
+        {
+            using namespace detail;
+            Call call;
+            call.func = func;
+            call.args = pack(msgpack::type::tuple<BOOST_PP_REPEAT(3, BOOST_PP_TYPE, T)>(BOOST_PP_REPEAT(3, BOOST_PP_ARGUMENT, T)));
+            asyncCall<T>(call, callback);
+        }
+
+        template<typename T, typename F, BOOST_PP_REPEAT(4, BOOST_PP_TYPENAME, T)>
+        inline void asyncCall(std::string func, F callback, BOOST_PP_REPEAT(4, BOOST_PP_PARAMETER, T))
+        {
+            using namespace detail;
+            Call call;
+            call.func = func;
+            call.args = pack(msgpack::type::tuple<BOOST_PP_REPEAT(4, BOOST_PP_TYPE, T)>(BOOST_PP_REPEAT(4, BOOST_PP_ARGUMENT, T)));
+            asyncCall<T>(call, callback);
+        }
+
+        template<typename T, typename F, BOOST_PP_REPEAT(5, BOOST_PP_TYPENAME, T)>
+        inline void asyncCall(std::string func, F callback, BOOST_PP_REPEAT(5, BOOST_PP_PARAMETER, T))
+        {
+            using namespace detail;
+            Call call;
+            call.func = func;
+            call.args = pack(msgpack::type::tuple<BOOST_PP_REPEAT(5, BOOST_PP_TYPE, T)>(BOOST_PP_REPEAT(5, BOOST_PP_ARGUMENT, T)));
+            asyncCall<T>(call, callback);
+        }
+
+        template<typename T, typename F, BOOST_PP_REPEAT(6, BOOST_PP_TYPENAME, T)>
+        inline void asyncCall(std::string func, F callback, BOOST_PP_REPEAT(6, BOOST_PP_PARAMETER, T))
+        {
+            using namespace detail;
+            Call call;
+            call.func = func;
+            call.args = pack(msgpack::type::tuple<BOOST_PP_REPEAT(6, BOOST_PP_TYPE, T)>(BOOST_PP_REPEAT(6, BOOST_PP_ARGUMENT, T)));
+            asyncCall<T>(call, callback);
+        }
+
+        template<typename T, typename F, BOOST_PP_REPEAT(7, BOOST_PP_TYPENAME, T)>
+        inline void asyncCall(std::string func, F callback, BOOST_PP_REPEAT(7, BOOST_PP_PARAMETER, T))
+        {
+            using namespace detail;
+            Call call;
+            call.func = func;
+            call.args = pack(msgpack::type::tuple<BOOST_PP_REPEAT(7, BOOST_PP_TYPE, T)>(BOOST_PP_REPEAT(7, BOOST_PP_ARGUMENT, T)));
+            asyncCall<T>(call, callback);
+        }
+
+        template<typename T, typename F, BOOST_PP_REPEAT(8, BOOST_PP_TYPENAME, T)>
+        inline void asyncCall(std::string func, F callback, BOOST_PP_REPEAT(8, BOOST_PP_PARAMETER, T))
+        {
+            using namespace detail;
+            Call call;
+            call.func = func;
+            call.args = pack(msgpack::type::tuple<BOOST_PP_REPEAT(8, BOOST_PP_TYPE, T)>(BOOST_PP_REPEAT(8, BOOST_PP_ARGUMENT, T)));
+            asyncCall<T>(call, callback);
+        }
+
+        template<typename T, typename F, BOOST_PP_REPEAT(9, BOOST_PP_TYPENAME, T)>
+        inline void asyncCall(std::string func, F callback, BOOST_PP_REPEAT(9, BOOST_PP_PARAMETER, T))
+        {
+            using namespace detail;
+            Call call;
+            call.func = func;
+            call.args = pack(msgpack::type::tuple<BOOST_PP_REPEAT(9, BOOST_PP_TYPE, T)>(BOOST_PP_REPEAT(9, BOOST_PP_ARGUMENT, T)));
+            asyncCall<T>(call, callback);
+        }
 #endif
 
     private:
