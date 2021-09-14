@@ -1,0 +1,9 @@
+@PACKAGE_INIT@
+include(CMakeFindDependencyMacro)
+find_dependency(Boost)
+find_dependency(apply)
+find_dependency(has_include)
+
+include("${CMAKE_CURRENT_LIST_DIR}/zrpcTargets.cmake")
+
+check_required_components(zrpc)

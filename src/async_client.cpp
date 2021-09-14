@@ -4,7 +4,7 @@
 //#define ZRPC_HAS_CXX_11 1
 #define ZRPC_DEBUG 1
 #include <zrpc.hpp>
-#include <dbg.h>
+//#include <dbg.h>
 
 int count = 0;
 
@@ -13,7 +13,8 @@ void onResult(asio::error_code error, int& result, ZRPC_SHARED_PTR<zrpc::Client<
     if (error)
     {
         return;
-        dbg(error.message());
+        //dbg(error.message());
+        std::cout << error.message() << std::endl;
         count++;
         if (count > 1)
         {
@@ -25,22 +26,25 @@ void onResult(asio::error_code error, int& result, ZRPC_SHARED_PTR<zrpc::Client<
             }, 0, 0);
         return;
     }
-    dbg(result);
+    //dbg(result);
+    std::cout << result << std::endl;
 }
 
 void onConnect(asio::error_code error, ZRPC_SHARED_PTR<zrpc::Client<asio::ip::tcp>> client)
 {
     if (error)
     {
-        dbg(error.message());
+        //dbg(error.message());
+        std::cout << error.message() << std::endl;
         return;
     }
-    dbg("connect");
+    //dbg("connect");
+    std::cout << "connect" << std::endl;
     client->asyncCall<int>("add", [client](asio::error_code e, int& result)
         {
             onResult(e, result, client);
         //}, std::string("yes"));
-        }, 0, 0);
+        }, 1, 9);
 };
 
 int main()

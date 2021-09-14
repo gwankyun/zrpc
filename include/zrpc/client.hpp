@@ -14,7 +14,7 @@
 
 #ifndef ZRPC_USE_BOOST_OPTIONAL
 #  define ZRPC_USE_BOOST_OPTIONAL 0
-#endif // !ZRPC_USE_BOOST_OPTIONAL
+#endif
 
 #if !defined(ZPRC_OPTIONAL) && !defined(ZRPC_NULLOPT)
 #  if ZRPC_HAS_CXX_17 && !ZRPC_USE_BOOST_OPTIONAL
@@ -25,15 +25,50 @@
 #    include <boost/optional.hpp>
 #    define ZPRC_OPTIONAL boost::optional
 #    define ZRPC_NULLOPT boost::none
-#  endif // ZRPC_HAS_CXX_17 && !ZRPC_USE_BOOST_OPTIONAL
-#endif // !defined(ZPRC_OPTIONAL) && !defined(ZRPC_NULLOPT)
+#  endif
+#endif
 
 namespace zrpc
 {
+    template<typename T>
+    struct optional
+    {
+#if ZRPC_HAS_CXX_17 && !ZRPC_USE_BOOST_OPTIONAL
+        typedef std::optional<T> type;
+#else
+        typedef boost::optional<T> type;
+#endif
+    };
+
+#if ZRPC_HAS_CXX_17 && !ZRPC_USE_BOOST_OPTIONAL
+    typedef std::nullopt_t nullopt_t;
+#else
+    typedef boost::none_t nullopt_t;
+#endif
+
+    inline nullopt_t nullopt()
+    {
+#if ZRPC_HAS_CXX_17 && !ZRPC_USE_BOOST_OPTIONAL
+        return std::nullopt;
+#else
+        return boost::none;
+#endif
+    }
+
+    template<typename T>
+    struct shared_ptr
+    {
+#if ZRPC_HAS_CXX_11
+        typedef std::shared_ptr<T> type;
+#else
+        typedef boost::shared_ptr<T> type;
+#endif
+    };
+
     namespace detail
     {
         template<typename T, typename Protocol>
-        ZPRC_OPTIONAL<T> tryCall(Call call_, typename Protocol::socket& socket)
+        typename optional<T>::type tryCall(Call call_, typename Protocol::socket& socket)
         {
             using namespace detail;
             bool enable = false;
@@ -95,11 +130,11 @@ namespace zrpc
 
             if (u)
             {
-                return ZPRC_OPTIONAL<T>(result);
+                return typename optional<T>::type(result);
             }
             else
             {
-                return ZRPC_NULLOPT;
+                return nullopt();
             }
         }
 
@@ -115,7 +150,7 @@ namespace zrpc
         T call(Call call_, typename Protocol::socket& socket)
         {
 
-            ZPRC_OPTIONAL<T> result = tryCall<T, Protocol>(call_, socket);
+            typename optional<T>::type result = tryCall<T, Protocol>(call_, socket);
             if (result)
             {
                 return *result;
@@ -195,7 +230,7 @@ namespace zrpc
         }
 #else
         template<typename R, typename T0>
-        ZPRC_OPTIONAL<R> tryCall(
+        typename optional<R>::type tryCall(
             std::string func,
             T0 T0_)
         {
@@ -207,116 +242,29 @@ namespace zrpc
             return detail::tryCall<R, Protocol>(call, socket);
         }
 
-        template<typename R, BOOST_PP_REPEAT(2, BOOST_PP_TYPENAME, T)>
-        ZPRC_OPTIONAL<R> tryCall(
-            std::string func,
-            BOOST_PP_REPEAT(2, BOOST_PP_PARAMETER, T))
-        {
-            using namespace detail;
-            Call call;
-            call.func = func;
-            msgpack::type::tuple<BOOST_PP_REPEAT(2, BOOST_PP_TYPE, T)> tpl(BOOST_PP_REPEAT(2, BOOST_PP_ARGUMENT, T));
-            call.args = pack(tpl);
-            return detail::tryCall<R, Protocol>(call, socket);
+#ifndef ZRPC_TRYCALL
+#define ZRPC_TRYCALL(z, n, _) \
+        template<typename R, BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPENAME, T)> \
+        typename optional<R>::type tryCall( \
+            std::string func, \
+            BOOST_PP_REPEAT_Z(z, n, BOOST_PP_PARAMETER, T)) \
+        { \
+            using namespace detail; \
+            Call call; \
+            call.func = func; \
+            msgpack::type::tuple<BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)> tpl(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_ARGUMENT, T)); \
+            call.args = pack(tpl); \
+            return detail::tryCall<R, Protocol>(call, socket); \
         }
-
-        template<typename R, BOOST_PP_REPEAT(3, BOOST_PP_TYPENAME, T)>
-        ZPRC_OPTIONAL<R> tryCall(
-            std::string func,
-            BOOST_PP_REPEAT(3, BOOST_PP_PARAMETER, T))
-        {
-            using namespace detail;
-            Call call;
-            call.func = func;
-            msgpack::type::tuple<BOOST_PP_REPEAT(3, BOOST_PP_TYPE, T)> tpl(BOOST_PP_REPEAT(3, BOOST_PP_ARGUMENT, T));
-            call.args = pack(tpl);
-            return detail::tryCall<R, Protocol>(call, socket);
-        }
-
-        template<typename R, BOOST_PP_REPEAT(4, BOOST_PP_TYPENAME, T)>
-        ZPRC_OPTIONAL<R> tryCall(
-            std::string func,
-            BOOST_PP_REPEAT(4, BOOST_PP_PARAMETER, T))
-        {
-            using namespace detail;
-            Call call;
-            call.func = func;
-            msgpack::type::tuple<BOOST_PP_REPEAT(4, BOOST_PP_TYPE, T)> tpl(BOOST_PP_REPEAT(4, BOOST_PP_ARGUMENT, T));
-            call.args = pack(tpl);
-            return detail::tryCall<R, Protocol>(call, socket);
-        }
-
-        template<typename R, BOOST_PP_REPEAT(5, BOOST_PP_TYPENAME, T)>
-        ZPRC_OPTIONAL<R> tryCall(
-            std::string func,
-            BOOST_PP_REPEAT(5, BOOST_PP_PARAMETER, T))
-        {
-            using namespace detail;
-            Call call;
-            call.func = func;
-            msgpack::type::tuple<BOOST_PP_REPEAT(5, BOOST_PP_TYPE, T)> tpl(BOOST_PP_REPEAT(5, BOOST_PP_ARGUMENT, T));
-            call.args = pack(tpl);
-            return detail::tryCall<R, Protocol>(call, socket);
-        }
-
-        template<typename R, BOOST_PP_REPEAT(6, BOOST_PP_TYPENAME, T)>
-        ZPRC_OPTIONAL<R> tryCall(
-            std::string func,
-            BOOST_PP_REPEAT(6, BOOST_PP_PARAMETER, T))
-        {
-            using namespace detail;
-            Call call;
-            call.func = func;
-            msgpack::type::tuple<BOOST_PP_REPEAT(6, BOOST_PP_TYPE, T)> tpl(BOOST_PP_REPEAT(6, BOOST_PP_ARGUMENT, T));
-            call.args = pack(tpl);
-            return detail::tryCall<R, Protocol>(call, socket);
-        }
-
-        template<typename R, BOOST_PP_REPEAT(7, BOOST_PP_TYPENAME, T)>
-        ZPRC_OPTIONAL<R> tryCall(
-            std::string func,
-            BOOST_PP_REPEAT(7, BOOST_PP_PARAMETER, T))
-        {
-            using namespace detail;
-            Call call;
-            call.func = func;
-            msgpack::type::tuple<BOOST_PP_REPEAT(7, BOOST_PP_TYPE, T)> tpl(BOOST_PP_REPEAT(7, BOOST_PP_ARGUMENT, T));
-            call.args = pack(tpl);
-            return detail::tryCall<R, Protocol>(call, socket);
-        }
-
-        template<typename R, BOOST_PP_REPEAT(8, BOOST_PP_TYPENAME, T)>
-        ZPRC_OPTIONAL<R> tryCall(
-            std::string func,
-            BOOST_PP_REPEAT(8, BOOST_PP_PARAMETER, T))
-        {
-            using namespace detail;
-            Call call;
-            call.func = func;
-            msgpack::type::tuple<BOOST_PP_REPEAT(8, BOOST_PP_TYPE, T)> tpl(BOOST_PP_REPEAT(8, BOOST_PP_ARGUMENT, T));
-            call.args = pack(tpl);
-            return detail::tryCall<R, Protocol>(call, socket);
-        }
-
-        template<typename R, BOOST_PP_REPEAT(9, BOOST_PP_TYPENAME, T)>
-        ZPRC_OPTIONAL<R> tryCall(
-            std::string func,
-            BOOST_PP_REPEAT(9, BOOST_PP_PARAMETER, T))
-        {
-            using namespace detail;
-            Call call;
-            call.func = func;
-            msgpack::type::tuple<BOOST_PP_REPEAT(9, BOOST_PP_TYPE, T)> tpl(BOOST_PP_REPEAT(9, BOOST_PP_ARGUMENT, T));
-            call.args = pack(tpl);
-            return detail::tryCall<R, Protocol>(call, socket);
-        }
+        BOOST_PP_REPEAT_FROM_TO(2, 10, ZRPC_TRYCALL, _)
+#endif
 
         template<typename R, typename T0>
         R call(
             std::string func,
             T0 T0_)
         {
-            ZPRC_OPTIONAL<R> result(tryCall<R>(func, T0_));
+            typename optional<R>::type result(tryCall<R>(func, T0_));
             if (result)
             {
                 return *result;
@@ -324,109 +272,22 @@ namespace zrpc
             throw detail::CallException();
         }
 
-        template<typename R, BOOST_PP_REPEAT(2, BOOST_PP_TYPENAME, T)>
-        R call(
-            std::string func,
-            BOOST_PP_REPEAT(2, BOOST_PP_PARAMETER, T))
-        {
-            ZPRC_OPTIONAL<R> result(tryCall<R>(func, BOOST_PP_REPEAT(2, BOOST_PP_ARGUMENT, T)));
-            if (result)
-            {
-                return *result;
-            }
-            throw detail::CallException();
+#ifndef ZRPC_CALL
+#  define ZRPC_CALL(z, n, _) \
+        template<typename R, BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPENAME, T)> \
+        R call( \
+            std::string func, \
+            BOOST_PP_REPEAT_Z(z, n, BOOST_PP_PARAMETER, T)) \
+        { \
+            typename optional<R>::type result(tryCall<R>(func, BOOST_PP_REPEAT_Z(z, n, BOOST_PP_ARGUMENT, T))); \
+            if (result) \
+            { \
+                return *result; \
+            } \
+            throw detail::CallException(); \
         }
-
-        template<typename R, BOOST_PP_REPEAT(3, BOOST_PP_TYPENAME, T)>
-        R call(
-            std::string func,
-            BOOST_PP_REPEAT(3, BOOST_PP_PARAMETER, T))
-        {
-            ZPRC_OPTIONAL<R> result(tryCall<R>(func, BOOST_PP_REPEAT(3, BOOST_PP_ARGUMENT, T)));
-            if (result)
-            {
-                return *result;
-            }
-            throw detail::CallException();
-        }
-
-        template<typename R, BOOST_PP_REPEAT(4, BOOST_PP_TYPENAME, T)>
-        R call(
-            std::string func,
-            BOOST_PP_REPEAT(4, BOOST_PP_PARAMETER, T))
-        {
-            ZPRC_OPTIONAL<R> result(tryCall<R>(func, BOOST_PP_REPEAT(4, BOOST_PP_ARGUMENT, T)));
-            if (result)
-            {
-                return *result;
-            }
-            throw detail::CallException();
-        }
-
-        template<typename R, BOOST_PP_REPEAT(5, BOOST_PP_TYPENAME, T)>
-        R call(
-            std::string func,
-            BOOST_PP_REPEAT(5, BOOST_PP_PARAMETER, T))
-        {
-            ZPRC_OPTIONAL<R> result(tryCall<R>(func, BOOST_PP_REPEAT(5, BOOST_PP_ARGUMENT, T)));
-            if (result)
-            {
-                return *result;
-            }
-            throw detail::CallException();
-        }
-
-        template<typename R, BOOST_PP_REPEAT(6, BOOST_PP_TYPENAME, T)>
-        R call(
-            std::string func,
-            BOOST_PP_REPEAT(6, BOOST_PP_PARAMETER, T))
-        {
-            ZPRC_OPTIONAL<R> result(tryCall<R>(func, BOOST_PP_REPEAT(6, BOOST_PP_ARGUMENT, T)));
-            if (result)
-            {
-                return *result;
-            }
-            throw detail::CallException();
-        }
-
-        template<typename R, BOOST_PP_REPEAT(7, BOOST_PP_TYPENAME, T)>
-        R call(
-            std::string func,
-            BOOST_PP_REPEAT(7, BOOST_PP_PARAMETER, T))
-        {
-            ZPRC_OPTIONAL<R> result(tryCall<R>(func, BOOST_PP_REPEAT(7, BOOST_PP_ARGUMENT, T)));
-            if (result)
-            {
-                return *result;
-            }
-            throw detail::CallException();
-        }
-
-        template<typename R, BOOST_PP_REPEAT(8, BOOST_PP_TYPENAME, T)>
-        R call(
-            std::string func,
-            BOOST_PP_REPEAT(8, BOOST_PP_PARAMETER, T))
-        {
-            ZPRC_OPTIONAL<R> result(tryCall<R>(func, BOOST_PP_REPEAT(8, BOOST_PP_ARGUMENT, T)));
-            if (result)
-            {
-                return *result;
-            }
-            throw detail::CallException();
-        }
-
-        template<typename R, BOOST_PP_REPEAT(9, BOOST_PP_TYPENAME, T)>
-        R call(
-            std::string func,
-            BOOST_PP_REPEAT(9, BOOST_PP_PARAMETER, T))
-        {
-            ZPRC_OPTIONAL<R> result(tryCall<R>(func, BOOST_PP_REPEAT(9, BOOST_PP_ARGUMENT, T)));
-            if (result)
-            {
-                return *result;
-            }
-            throw detail::CallException();
-        }
+        BOOST_PP_REPEAT_FROM_TO(2, 10, ZRPC_CALL, _)
+#endif
 #endif // ZRPC_HAS_CXX_11
 
     private:
@@ -445,7 +306,7 @@ namespace zrpc
             if (offset < buffer.size())
             {
                 asio::ASIO_CONST_BUFFER newBuffer(asio::buffer(buffer.begin() + offset, buffer.size() - offset));
-                ZRPC_SHARED_PTR< Client<Protocol> > self(shared_from_this());
+                typename shared_ptr< Client<Protocol> >::type self(shared_from_this());
 #if ZRPC_HAS_CXX_11
                 socket.async_write_some(
                     newBuffer,
@@ -456,7 +317,7 @@ namespace zrpc
 #else
                 struct Callback
                 {
-                    ZRPC_SHARED_PTR< Client<Protocol> > self;
+                    typename shared_ptr< Client<Protocol> >::type self;
                     asio::ASIO_CONST_BUFFER newBuffer;
                     T data;
                     std::size_t offset;
@@ -497,7 +358,7 @@ namespace zrpc
             if (offset < buffer.size())
             {
                 asio::ASIO_MUTABLE_BUFFER newBuffer((char*)buffer.data() + offset, buffer.size() - offset);
-                ZRPC_SHARED_PTR< Client<Protocol> > self(shared_from_this());
+                typename shared_ptr< Client<Protocol> >::type self(shared_from_this());
 #if ZRPC_HAS_CXX_11
                 socket.async_read_some(
                     newBuffer,
@@ -508,7 +369,7 @@ namespace zrpc
 #else
                 struct Callback
                 {
-                    ZRPC_SHARED_PTR< Client<Protocol> > self;
+                    typename shared_ptr< Client<Protocol> >::type self;
                     asio::ASIO_MUTABLE_BUFFER newBuffer;
                     T data;
                     std::size_t offset;
@@ -536,8 +397,8 @@ namespace zrpc
         template<typename T, typename F>
         void onReadHeader(
             asio::error_code error, std::size_t size,
-            ZRPC_SHARED_PTR<T> result, F callback,
-            ZRPC_SHARED_PTR<detail::Header> header)
+            typename shared_ptr<T>::type result, F callback,
+            typename shared_ptr<detail::Header>::type header)
         {
             if (error)
             {
@@ -545,8 +406,8 @@ namespace zrpc
                 return;
             }
             //zdbg("read header!");
-            ZRPC_SHARED_PTR< detail::vector<char> > vec(ZRPC_MAKE_SHARED<detail::vector<char>>(header->length + (uint32_t)1, '\0'));
-            ZRPC_SHARED_PTR< Client<Protocol> > self(shared_from_this());
+            typename shared_ptr< detail::vector<char> >::type vec(ZRPC_MAKE_SHARED<detail::vector<char>>(header->length + (uint32_t)1, '\0'));
+            typename shared_ptr< Client<Protocol> >::type self(shared_from_this());
 #if ZRPC_HAS_CXX_11
             self->asyncRead(
                 asio::buffer(vec->data(), vec->size() - 1),
@@ -574,10 +435,10 @@ namespace zrpc
                     : callback(callback_)
                 {
                 }
-                ZRPC_SHARED_PTR< Client<Protocol> > self;
-                ZRPC_SHARED_PTR<T> result;
+                typename shared_ptr< Client<Protocol> >::type self;
+                typename shared_ptr<T>::type result;
                 F callback;
-                ZRPC_SHARED_PTR< detail::vector<char> > vec;
+                typename shared_ptr< detail::vector<char> >::type vec;
                 void operator()(asio::error_code error, std::size_t size)
                 {
                     if (error)
@@ -608,8 +469,8 @@ namespace zrpc
         template<typename T, typename F>
         void onWriteHeader(
             asio::error_code error, std::size_t size,
-            ZRPC_SHARED_PTR<T> result, F callback,
-            ZRPC_SHARED_PTR<std::string> buffer)
+            typename shared_ptr<T>::type result, F callback,
+            typename shared_ptr<std::string>::type buffer)
         {
             if (error)
             {
@@ -617,7 +478,7 @@ namespace zrpc
                 return;
             }
             zdbg("write header!");
-            ZRPC_SHARED_PTR< Client<Protocol> > self(shared_from_this());
+            typename shared_ptr< Client<Protocol> >::type self(shared_from_this());
 
 #if ZRPC_HAS_CXX_11
             asyncWrite(
@@ -648,10 +509,10 @@ namespace zrpc
                     : callback(f_)
                 {
                 }
-                ZRPC_SHARED_PTR< Client<Protocol> > self;
-                ZRPC_SHARED_PTR<T> result;
+                typename shared_ptr< Client<Protocol> >::type self;
+                typename shared_ptr<T>::type result;
                 F callback;
-                ZRPC_SHARED_PTR<std::string> buffer;
+                typename shared_ptr<std::string>::type buffer;
                 void operator()(asio::error_code error, std::size_t size)
                 {
                     if (error)
@@ -667,13 +528,13 @@ namespace zrpc
                             : callback(f_)
                         {
                         }
-                        ZRPC_SHARED_PTR< Client<Protocol> > self;
-                        ZRPC_SHARED_PTR<detail::Header> header;
-                        ZRPC_SHARED_PTR<T> result;
+                        typename shared_ptr< Client<Protocol> >::type self;
+                        typename shared_ptr<detail::Header>::type header;
+                        typename shared_ptr<T>::type result;
                         F callback;
                         void operator()(asio::error_code error, std::size_t size)
                         {
-                            self->onReadHeader(error, size, result, callback, header);
+                            self->onReadHeader<T, F>(error, size, result, callback, header);
                         }
                     };
 
@@ -705,7 +566,7 @@ namespace zrpc
         template<typename T, typename F>
         void asyncWrite(asio::ASIO_CONST_BUFFER buffer, T data, F f)
         {
-            ZRPC_SHARED_PTR< Client<Protocol> > self(shared_from_this());
+            typename shared_ptr< Client<Protocol> >::type self(shared_from_this());
 
 #if ZRPC_HAS_CXX_11
             socket.async_write_some(
@@ -722,7 +583,7 @@ namespace zrpc
                     , f(f_)
                 {
                 }
-                ZRPC_SHARED_PTR< Client<Protocol> > self;
+                typename shared_ptr< Client<Protocol> >::type self;
                 asio::ASIO_CONST_BUFFER buffer;
                 T data;
                 F f;
@@ -741,7 +602,7 @@ namespace zrpc
         template<typename T, typename F>
         void asyncRead(asio::ASIO_MUTABLE_BUFFER buffer, T data, F f)
         {
-            ZRPC_SHARED_PTR< Client<Protocol> > self(shared_from_this());
+            typename shared_ptr< Client<Protocol> >::type self(shared_from_this());
 
 #if ZRPC_HAS_CXX_11
             socket.async_read_some(
@@ -758,7 +619,7 @@ namespace zrpc
                     , f(f_)
                 {
                 }
-                ZRPC_SHARED_PTR< Client<Protocol> > self;
+                typename shared_ptr< Client<Protocol> >::type self;
                 asio::ASIO_MUTABLE_BUFFER buffer;
                 T data;
                 F f;
@@ -778,17 +639,17 @@ namespace zrpc
         void asyncCall(const detail::Call& call, F callback)
         {
             using namespace detail;
-            ZRPC_SHARED_PTR<Header> header(ZRPC_MAKE_SHARED<Header>());
+            typename shared_ptr<Header>::type header(ZRPC_MAKE_SHARED<Header>());
             initialize(*header);
-            ZRPC_SHARED_PTR<std::string> buffer(ZRPC_MAKE_SHARED<std::string>(pack(call)));
+            typename shared_ptr<std::string>::type buffer(ZRPC_MAKE_SHARED<std::string>(pack(call)));
             header->length = buffer->size();
 
             std::string hex;
             detail::hex(*header, std::back_inserter(hex));
             zdbg(hex, hex.size());
 
-            ZRPC_SHARED_PTR< Client<typename Protocol> > self(shared_from_this());
-            ZRPC_SHARED_PTR<T> result(ZRPC_MAKE_SHARED<T>());
+            typename shared_ptr< Client<typename Protocol> >::type self(shared_from_this());
+            typename shared_ptr<T>::type result(ZRPC_MAKE_SHARED<T>());
 
 #if ZRPC_HAS_CXX_11
             asyncWrite(
@@ -801,22 +662,22 @@ namespace zrpc
 #else
             struct Callback
             {
-                Callback(F callback_)
+                Callback(F callback_, typename shared_ptr<T>::type result_)
                     : callback(callback_)
+                    , result(result_)
                 {
                 }
-                ZRPC_SHARED_PTR< Client<Protocol> > self;
-                ZRPC_SHARED_PTR<T> result;
+                typename shared_ptr< Client<Protocol> >::type self;
+                typename shared_ptr<T>::type result;
                 F callback;
-                ZRPC_SHARED_PTR<std::string> buffer;
+                typename shared_ptr<std::string>::type buffer;
                 void operator()(asio::error_code error, std::size_t size)
                 {
-                    self->onWriteHeader(error, size, result, callback, buffer);
+                    self->onWriteHeader<T, F>(error, size, this->result, callback, buffer);
                 }
             };
-            Callback cb(callback);
+            Callback cb(callback, result);
             cb.self = self;
-            cb.result = result;
             cb.buffer = buffer;
 
             asyncWrite(
@@ -847,85 +708,19 @@ namespace zrpc
             asyncCall<T>(call, callback);
         }
 
-        template<typename T, typename F, BOOST_PP_REPEAT(2, BOOST_PP_TYPENAME, T)>
-        inline void asyncCall(std::string func, F callback, BOOST_PP_REPEAT(2, BOOST_PP_PARAMETER, T))
-        {
-            using namespace detail;
-            Call call;
-            call.func = func;
-            call.args = pack(msgpack::type::tuple<BOOST_PP_REPEAT(2, BOOST_PP_TYPE, T)>(BOOST_PP_REPEAT(2, BOOST_PP_ARGUMENT, T)));
-            asyncCall<T>(call, callback);
+#ifndef ZRPC_ASYNC_CALL
+#  define ZRPC_ASYNC_CALL(z, n, _) \
+        template<typename T, typename F, BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPENAME, T)> \
+        inline void asyncCall(std::string func, F callback, BOOST_PP_REPEAT_Z(z, n, BOOST_PP_PARAMETER, T)) \
+        { \
+            using namespace detail; \
+            Call call; \
+            call.func = func; \
+            call.args = pack(msgpack::type::tuple<BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)>(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_ARGUMENT, T))); \
+            asyncCall<T>(call, callback); \
         }
-
-        template<typename T, typename F, BOOST_PP_REPEAT(3, BOOST_PP_TYPENAME, T)>
-        inline void asyncCall(std::string func, F callback, BOOST_PP_REPEAT(3, BOOST_PP_PARAMETER, T))
-        {
-            using namespace detail;
-            Call call;
-            call.func = func;
-            call.args = pack(msgpack::type::tuple<BOOST_PP_REPEAT(3, BOOST_PP_TYPE, T)>(BOOST_PP_REPEAT(3, BOOST_PP_ARGUMENT, T)));
-            asyncCall<T>(call, callback);
-        }
-
-        template<typename T, typename F, BOOST_PP_REPEAT(4, BOOST_PP_TYPENAME, T)>
-        inline void asyncCall(std::string func, F callback, BOOST_PP_REPEAT(4, BOOST_PP_PARAMETER, T))
-        {
-            using namespace detail;
-            Call call;
-            call.func = func;
-            call.args = pack(msgpack::type::tuple<BOOST_PP_REPEAT(4, BOOST_PP_TYPE, T)>(BOOST_PP_REPEAT(4, BOOST_PP_ARGUMENT, T)));
-            asyncCall<T>(call, callback);
-        }
-
-        template<typename T, typename F, BOOST_PP_REPEAT(5, BOOST_PP_TYPENAME, T)>
-        inline void asyncCall(std::string func, F callback, BOOST_PP_REPEAT(5, BOOST_PP_PARAMETER, T))
-        {
-            using namespace detail;
-            Call call;
-            call.func = func;
-            call.args = pack(msgpack::type::tuple<BOOST_PP_REPEAT(5, BOOST_PP_TYPE, T)>(BOOST_PP_REPEAT(5, BOOST_PP_ARGUMENT, T)));
-            asyncCall<T>(call, callback);
-        }
-
-        template<typename T, typename F, BOOST_PP_REPEAT(6, BOOST_PP_TYPENAME, T)>
-        inline void asyncCall(std::string func, F callback, BOOST_PP_REPEAT(6, BOOST_PP_PARAMETER, T))
-        {
-            using namespace detail;
-            Call call;
-            call.func = func;
-            call.args = pack(msgpack::type::tuple<BOOST_PP_REPEAT(6, BOOST_PP_TYPE, T)>(BOOST_PP_REPEAT(6, BOOST_PP_ARGUMENT, T)));
-            asyncCall<T>(call, callback);
-        }
-
-        template<typename T, typename F, BOOST_PP_REPEAT(7, BOOST_PP_TYPENAME, T)>
-        inline void asyncCall(std::string func, F callback, BOOST_PP_REPEAT(7, BOOST_PP_PARAMETER, T))
-        {
-            using namespace detail;
-            Call call;
-            call.func = func;
-            call.args = pack(msgpack::type::tuple<BOOST_PP_REPEAT(7, BOOST_PP_TYPE, T)>(BOOST_PP_REPEAT(7, BOOST_PP_ARGUMENT, T)));
-            asyncCall<T>(call, callback);
-        }
-
-        template<typename T, typename F, BOOST_PP_REPEAT(8, BOOST_PP_TYPENAME, T)>
-        inline void asyncCall(std::string func, F callback, BOOST_PP_REPEAT(8, BOOST_PP_PARAMETER, T))
-        {
-            using namespace detail;
-            Call call;
-            call.func = func;
-            call.args = pack(msgpack::type::tuple<BOOST_PP_REPEAT(8, BOOST_PP_TYPE, T)>(BOOST_PP_REPEAT(8, BOOST_PP_ARGUMENT, T)));
-            asyncCall<T>(call, callback);
-        }
-
-        template<typename T, typename F, BOOST_PP_REPEAT(9, BOOST_PP_TYPENAME, T)>
-        inline void asyncCall(std::string func, F callback, BOOST_PP_REPEAT(9, BOOST_PP_PARAMETER, T))
-        {
-            using namespace detail;
-            Call call;
-            call.func = func;
-            call.args = pack(msgpack::type::tuple<BOOST_PP_REPEAT(9, BOOST_PP_TYPE, T)>(BOOST_PP_REPEAT(9, BOOST_PP_ARGUMENT, T)));
-            asyncCall<T>(call, callback);
-        }
+        BOOST_PP_REPEAT_FROM_TO(2, 10, ZRPC_ASYNC_CALL, _)
+#endif
 #endif
 
     private:

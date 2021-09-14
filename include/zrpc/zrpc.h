@@ -2,6 +2,7 @@
 #include <asio.hpp>
 #include <apply.hpp>
 
+#define ZRPC_HAS_CXX_11 0
 #ifndef ZRPC_HAS_CXX_11
 #  if __cplusplus >= 201103L || (defined(__cpp_variadic_templates) && defined(__cpp_rvalue_references))
 #    define ZRPC_HAS_CXX_11 1
@@ -24,8 +25,10 @@
 #endif // !ZRPC_HAS_CXX_11
 
 #if ZRPC_HAS_CXX_17
-#  include <dbg.h>
+//#  include <dbg.h>
 #endif // ZRPC_HAS_CXX_17
+
+#define dbg(...)
 
 #ifndef ZRPC_DEBUG
 #  define ZRPC_DEBUG 0
@@ -53,6 +56,8 @@
 #    define zdbg(x) std::cout << __func__ << ":" << __LINE__ << " " << x << std::endl
 #  endif // ZRPC_DEBUG && defined(dbg)
 #endif // !zdbg
+
+#define zdbg(...) dbg(##__VA_ARGS__)
 
 #ifndef ZRPC_USE_BOOST_SHARED_PTR
 #  define ZRPC_USE_BOOST_SHARED_PTR 0
