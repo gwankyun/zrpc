@@ -8,7 +8,7 @@
 
 int count = 0;
 
-void onResult(asio::error_code error, int& result, ZRPC_SHARED_PTR<zrpc::Client<asio::ip::tcp>> client)
+void onResult(asio::error_code error, int& result, typename zrpc::shared_ptr<zrpc::Client<asio::ip::tcp>>::type client)
 {
     if (error)
     {
@@ -30,7 +30,7 @@ void onResult(asio::error_code error, int& result, ZRPC_SHARED_PTR<zrpc::Client<
     std::cout << result << std::endl;
 }
 
-void onConnect(asio::error_code error, ZRPC_SHARED_PTR<zrpc::Client<asio::ip::tcp>> client)
+void onConnect(asio::error_code error, typename zrpc::shared_ptr<zrpc::Client<asio::ip::tcp>>::type client)
 {
     if (error)
     {

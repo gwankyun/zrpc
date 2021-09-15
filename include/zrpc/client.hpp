@@ -7,7 +7,7 @@
 #include <boost/tuple/tuple.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
-#include <boost/bind.hpp>
+//#include <boost/bind.hpp>
 #include <boost/algorithm/hex.hpp>
 #include <boost/smart_ptr/enable_shared_from_this.hpp>
 #include <boost/algorithm/hex.hpp>
@@ -30,41 +30,6 @@
 
 namespace zrpc
 {
-    template<typename T>
-    struct optional
-    {
-#if ZRPC_HAS_CXX_17 && !ZRPC_USE_BOOST_OPTIONAL
-        typedef std::optional<T> type;
-#else
-        typedef boost::optional<T> type;
-#endif
-    };
-
-#if ZRPC_HAS_CXX_17 && !ZRPC_USE_BOOST_OPTIONAL
-    typedef std::nullopt_t nullopt_t;
-#else
-    typedef boost::none_t nullopt_t;
-#endif
-
-    inline nullopt_t nullopt()
-    {
-#if ZRPC_HAS_CXX_17 && !ZRPC_USE_BOOST_OPTIONAL
-        return std::nullopt;
-#else
-        return boost::none;
-#endif
-    }
-
-    template<typename T>
-    struct shared_ptr
-    {
-#if ZRPC_HAS_CXX_11
-        typedef std::shared_ptr<T> type;
-#else
-        typedef boost::shared_ptr<T> type;
-#endif
-    };
-
     namespace detail
     {
         template<typename T, typename Protocol>
@@ -173,16 +138,19 @@ namespace zrpc
         {
         }
 
-        void connect(std::string ip, uint16_t port)
+        bool connect(std::string ip, uint16_t port)
         {
             try
             {
                 socket.connect(Protocol::endpoint(asio::ip::make_address(ip), port));
+                return true;
             }
             catch (const std::exception& e)
             {
                 LOG(info, e.what());
+                return false;
             }
+            return false;
         }
 
         template<typename F>
@@ -243,7 +211,7 @@ namespace zrpc
         }
 
 #ifndef ZRPC_TRYCALL
-#define ZRPC_TRYCALL(z, n, _) \
+#  define ZRPC_TRYCALL(z, n, _) \
         template<typename R, BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPENAME, T)> \
         typename optional<R>::type tryCall( \
             std::string func, \
@@ -256,7 +224,7 @@ namespace zrpc
             call.args = pack(tpl); \
             return detail::tryCall<R, Protocol>(call, socket); \
         }
-        BOOST_PP_REPEAT_FROM_TO(2, 10, ZRPC_TRYCALL, _)
+        BOOST_PP_REPEAT_FROM_TO(2, 10, ZRPC_TRYCALL, _);
 #endif
 
         template<typename R, typename T0>
@@ -286,15 +254,107 @@ namespace zrpc
             } \
             throw detail::CallException(); \
         }
-        BOOST_PP_REPEAT_FROM_TO(2, 10, ZRPC_CALL, _)
+        BOOST_PP_REPEAT_FROM_TO(2, 10, ZRPC_CALL, _);
 #endif
+#endif
+
+    public:
+        template<typename T, typename F>
+        void asyncCall(const detail::Call& call, F callback)
+        {
+            using namespace detail;
+            typename shared_ptr<Header>::type header(ZRPC_MAKE_SHARED<Header>());
+            initialize(*header);
+            typename shared_ptr<std::string>::type buffer(ZRPC_MAKE_SHARED<std::string>(pack(call)));
+            header->length = buffer->size();
+
+            std::string hex;
+            detail::hex(*header, std::back_inserter(hex));
+            zdbg(hex, hex.size());
+
+            typename shared_ptr< Client<typename Protocol> >::type self(shared_from_this());
+            typename shared_ptr<T>::type result(ZRPC_MAKE_SHARED<T>());
+
+#if ZRPC_HAS_CXX_11
+            asyncWrite(
+                asio::buffer((const char*)header.get(), sizeof(*header)),
+                header,
+                [self, header, buffer, result, callback](asio::error_code error, std::size_t size)
+                {
+                    self->onWriteHeader<T, F>(error, size, result, callback, buffer);
+                });
+#else
+            struct Callback
+            {
+                Callback(F callback_, typename shared_ptr<T>::type result_)
+                    : callback(callback_)
+                    , result(result_)
+                {
+                }
+                typename shared_ptr< Client<Protocol> >::type self;
+                typename shared_ptr<T>::type result;
+                F callback;
+                typename shared_ptr<std::string>::type buffer;
+                void operator()(asio::error_code error, std::size_t size)
+                {
+                    self->onWriteHeader<T, F>(error, size, this->result, callback, buffer);
+                }
+            };
+            Callback cb(callback, result);
+            cb.self = self;
+            cb.buffer = buffer;
+
+            asyncWrite(
+                asio::buffer((const char*)header.get(), sizeof(*header)),
+                header,
+                cb);
 #endif // ZRPC_HAS_CXX_11
+        }
+
+#if ZRPC_HAS_CXX_11
+        template<typename T, typename F, typename... Args>
+        void asyncCall(std::string func, F callback, Args... args)
+        {
+            using namespace detail;
+            Call call;
+            call.func = func;
+            call.args = pack(std::make_tuple<Args...>(std::forward<Args>(args)...));
+            asyncCall<T>(call, callback);
+        }
+#else
+        template<typename T, typename F, typename T0>
+        inline void asyncCall(std::string func, F callback, T0 T0_)
+        {
+            using namespace detail;
+            Call call;
+            call.func = func;
+            call.args = pack(msgpack::type::tuple<T0>(T0_));
+            asyncCall<T>(call, callback);
+        }
+
+#ifndef ZRPC_ASYNC_CALL
+#  define ZRPC_ASYNC_CALL(z, n, _) \
+        template<typename T, typename F, BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPENAME, T)> \
+        inline void asyncCall(std::string func, F callback, BOOST_PP_REPEAT_Z(z, n, BOOST_PP_PARAMETER, T)) \
+        { \
+            using namespace detail; \
+            Call call; \
+            call.func = func; \
+            call.args = pack(msgpack::type::tuple<BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)>(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_ARGUMENT, T))); \
+            asyncCall<T>(call, callback); \
+        }
+        BOOST_PP_REPEAT_FROM_TO(2, 10, ZRPC_ASYNC_CALL, _);
+#endif
+#endif
 
     private:
+        typename Protocol::socket socket;
+        asio::error_code lastErrorCode_;
+
         template<typename T, typename F>
-        void onAsyncWrite(
+        void onAsyncRead(
             asio::error_code error, std::size_t size,
-            asio::ASIO_CONST_BUFFER buffer, T data,
+            MutableBuffer buffer, T data,
             std::size_t count, F f)
         {
             if (error)
@@ -305,7 +365,58 @@ namespace zrpc
             std::size_t offset = count + size;
             if (offset < buffer.size())
             {
-                asio::ASIO_CONST_BUFFER newBuffer(asio::buffer(buffer.begin() + offset, buffer.size() - offset));
+                MutableBuffer newBuffer((char*)buffer.data() + offset, buffer.size() - offset);
+                typename shared_ptr< Client<Protocol> >::type self(shared_from_this());
+#if ZRPC_HAS_CXX_11
+                socket.async_read_some(
+                    newBuffer,
+                    [self, data, newBuffer, offset, f](asio::error_code error, std::size_t size)
+                    {
+                        self->onAsyncRead(error, size, newBuffer, data, offset, f);
+                    });
+#else
+                struct Callback
+                {
+                    typename shared_ptr< Client<Protocol> >::type self;
+                    MutableBuffer newBuffer;
+                    T data;
+                    std::size_t offset;
+                    F f;
+                    Callback(F f_, MutableBuffer newBuffer_)
+                        : f(f_)
+                        , newBuffer(newBuffer_)
+                    {
+                    }
+                    void operator()(asio::error_code error, std::size_t size)
+                    {
+                        self->onAsyncRead(error, size, newBuffer, data, offset, f);
+                    }
+                };
+                Callback cb(f, newBuffer);
+                cb.data = data;
+                cb.offset = offset;
+                socket.async_read_some(newBuffer, cb);
+#endif
+                return;
+            }
+            f(error, offset);
+        }
+
+        template<typename T, typename F>
+        void onAsyncWrite(
+            asio::error_code error, std::size_t size,
+            ConstBuffer buffer, T data,
+            std::size_t count, F f)
+        {
+            if (error)
+            {
+                f(error, count);
+                return;
+            }
+            std::size_t offset = count + size;
+            if (offset < buffer.size())
+            {
+                ConstBuffer newBuffer(asio::buffer(buffer.begin() + offset, buffer.size() - offset));
                 typename shared_ptr< Client<Protocol> >::type self(shared_from_this());
 #if ZRPC_HAS_CXX_11
                 socket.async_write_some(
@@ -318,11 +429,11 @@ namespace zrpc
                 struct Callback
                 {
                     typename shared_ptr< Client<Protocol> >::type self;
-                    asio::ASIO_CONST_BUFFER newBuffer;
+                    ConstBuffer newBuffer;
                     T data;
                     std::size_t offset;
                     F f;
-                    Callback(F f_, asio::ASIO_CONST_BUFFER newBuffer_)
+                    Callback(F f_, ConstBuffer newBuffer_)
                         : f(f_)
                         , newBuffer(newBuffer_)
                     {
@@ -337,57 +448,6 @@ namespace zrpc
                 cb.data = data;
                 cb.offset = offset;
                 socket.async_write_some(newBuffer, cb);
-#endif
-                return;
-            }
-            f(error, offset);
-        }
-
-        template<typename T, typename F>
-        void onAsyncRead(
-            asio::error_code error, std::size_t size,
-            asio::ASIO_MUTABLE_BUFFER buffer, T data,
-            std::size_t count, F f)
-        {
-            if (error)
-            {
-                f(error, count);
-                return;
-            }
-            std::size_t offset = count + size;
-            if (offset < buffer.size())
-            {
-                asio::ASIO_MUTABLE_BUFFER newBuffer((char*)buffer.data() + offset, buffer.size() - offset);
-                typename shared_ptr< Client<Protocol> >::type self(shared_from_this());
-#if ZRPC_HAS_CXX_11
-                socket.async_read_some(
-                    newBuffer,
-                    [self, data, newBuffer, offset, f](asio::error_code error, std::size_t size)
-                    {
-                        self->onAsyncRead(error, size, newBuffer, data, offset, f);
-                    });
-#else
-                struct Callback
-                {
-                    typename shared_ptr< Client<Protocol> >::type self;
-                    asio::ASIO_MUTABLE_BUFFER newBuffer;
-                    T data;
-                    std::size_t offset;
-                    F f;
-                    Callback(F f_, asio::ASIO_MUTABLE_BUFFER newBuffer_)
-                        : f(f_)
-                        , newBuffer(newBuffer_)
-                    {
-                    }
-                    void operator()(asio::error_code error, std::size_t size)
-                    {
-                        self->onAsyncRead(error, size, newBuffer, data, offset, f);
-                    }
-                };
-                Callback cb(f, newBuffer);
-                cb.data = data;
-                cb.offset = offset;
-                socket.async_read_some(newBuffer, cb);
 #endif
                 return;
             }
@@ -499,7 +559,7 @@ namespace zrpc
                         header,
                         [self, result, callback, header](asio::error_code error, std::size_t size)
                         {
-                            self->onReadHeader(error, size, result, callback, header);
+                            self->onReadHeader<T, F>(error, size, result, callback, header);
                         });
                 });
 #else
@@ -562,45 +622,8 @@ namespace zrpc
 #endif
         }
 
-    public:
         template<typename T, typename F>
-        void asyncWrite(asio::ASIO_CONST_BUFFER buffer, T data, F f)
-        {
-            typename shared_ptr< Client<Protocol> >::type self(shared_from_this());
-
-#if ZRPC_HAS_CXX_11
-            socket.async_write_some(
-                buffer,
-                [self, data, buffer, f](asio::error_code error, std::size_t size)
-                {
-                    self->onAsyncWrite(error, size, buffer, data, 0, f);
-                });
-#else
-            struct Callback
-            {
-                Callback(asio::ASIO_CONST_BUFFER buffer_, F f_)
-                    : buffer(buffer_)
-                    , f(f_)
-                {
-                }
-                typename shared_ptr< Client<Protocol> >::type self;
-                asio::ASIO_CONST_BUFFER buffer;
-                T data;
-                F f;
-                void operator()(asio::error_code error, std::size_t size)
-                {
-                    self->onAsyncWrite(error, size, buffer, data, 0, f);
-                }
-            };
-            Callback cb(buffer, f);
-            cb.data = data;
-            cb.self = self;
-            socket.async_write_some(buffer, cb);
-#endif
-        }
-
-        template<typename T, typename F>
-        void asyncRead(asio::ASIO_MUTABLE_BUFFER buffer, T data, F f)
+        void asyncRead(MutableBuffer buffer, T data, F f)
         {
             typename shared_ptr< Client<Protocol> >::type self(shared_from_this());
 
@@ -614,13 +637,13 @@ namespace zrpc
 #else
             struct Callback
             {
-                Callback(asio::ASIO_MUTABLE_BUFFER buffer_, F f_)
+                Callback(MutableBuffer buffer_, F f_)
                     : buffer(buffer_)
                     , f(f_)
                 {
                 }
                 typename shared_ptr< Client<Protocol> >::type self;
-                asio::ASIO_MUTABLE_BUFFER buffer;
+                MutableBuffer buffer;
                 T data;
                 F f;
                 void operator()(asio::error_code error, std::size_t size)
@@ -636,95 +659,39 @@ namespace zrpc
         }
 
         template<typename T, typename F>
-        void asyncCall(const detail::Call& call, F callback)
+        void asyncWrite(ConstBuffer buffer, T data, F f)
         {
-            using namespace detail;
-            typename shared_ptr<Header>::type header(ZRPC_MAKE_SHARED<Header>());
-            initialize(*header);
-            typename shared_ptr<std::string>::type buffer(ZRPC_MAKE_SHARED<std::string>(pack(call)));
-            header->length = buffer->size();
-
-            std::string hex;
-            detail::hex(*header, std::back_inserter(hex));
-            zdbg(hex, hex.size());
-
-            typename shared_ptr< Client<typename Protocol> >::type self(shared_from_this());
-            typename shared_ptr<T>::type result(ZRPC_MAKE_SHARED<T>());
+            typename shared_ptr< Client<Protocol> >::type self(shared_from_this());
 
 #if ZRPC_HAS_CXX_11
-            asyncWrite(
-                asio::buffer((const char*)header.get(), sizeof(*header)),
-                header,
-                [self, header, buffer, result, callback](asio::error_code error, std::size_t size)
+            socket.async_write_some(
+                buffer,
+                [self, data, buffer, f](asio::error_code error, std::size_t size)
                 {
-                    self->onWriteHeader(error, size, result, callback, buffer);
+                    self->onAsyncWrite(error, size, buffer, data, 0, f);
                 });
 #else
             struct Callback
             {
-                Callback(F callback_, typename shared_ptr<T>::type result_)
-                    : callback(callback_)
-                    , result(result_)
+                Callback(ConstBuffer buffer_, F f_)
+                    : buffer(buffer_)
+                    , f(f_)
                 {
                 }
                 typename shared_ptr< Client<Protocol> >::type self;
-                typename shared_ptr<T>::type result;
-                F callback;
-                typename shared_ptr<std::string>::type buffer;
+                ConstBuffer buffer;
+                T data;
+                F f;
                 void operator()(asio::error_code error, std::size_t size)
                 {
-                    self->onWriteHeader<T, F>(error, size, this->result, callback, buffer);
+                    self->onAsyncWrite(error, size, buffer, data, 0, f);
                 }
             };
-            Callback cb(callback, result);
+            Callback cb(buffer, f);
+            cb.data = data;
             cb.self = self;
-            cb.buffer = buffer;
-
-            asyncWrite(
-                asio::buffer((const char*)header.get(), sizeof(*header)),
-                header,
-                cb);
-#endif // ZRPC_HAS_CXX_11
-        }
-
-#if ZRPC_HAS_CXX_11
-        template<typename T, typename F, typename... Args>
-        void asyncCall(std::string func, F callback, Args... args)
-        {
-            using namespace detail;
-            Call call;
-            call.func = func;
-            call.args = pack(std::make_tuple<Args...>(std::forward<Args>(args)...));
-            asyncCall<T>(call, callback);
-        }
-#else
-        template<typename T, typename F, typename T0>
-        inline void asyncCall(std::string func, F callback, T0 T0_)
-        {
-            using namespace detail;
-            Call call;
-            call.func = func;
-            call.args = pack(msgpack::type::tuple<T0>(T0_));
-            asyncCall<T>(call, callback);
-        }
-
-#ifndef ZRPC_ASYNC_CALL
-#  define ZRPC_ASYNC_CALL(z, n, _) \
-        template<typename T, typename F, BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPENAME, T)> \
-        inline void asyncCall(std::string func, F callback, BOOST_PP_REPEAT_Z(z, n, BOOST_PP_PARAMETER, T)) \
-        { \
-            using namespace detail; \
-            Call call; \
-            call.func = func; \
-            call.args = pack(msgpack::type::tuple<BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)>(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_ARGUMENT, T))); \
-            asyncCall<T>(call, callback); \
-        }
-        BOOST_PP_REPEAT_FROM_TO(2, 10, ZRPC_ASYNC_CALL, _)
+            socket.async_write_some(buffer, cb);
 #endif
-#endif
-
-    private:
-        typename Protocol::socket socket;
-        asio::error_code lastErrorCode_;
+        }
     };
 }

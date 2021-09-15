@@ -33,7 +33,8 @@ int main()
     }
     catch (const std::exception& e)
     {
-        dbg(e.what());
+        //dbg(e.what());
+        std::cout << e.what() << std::endl;
     }
 
     //while (true)

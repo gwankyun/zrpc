@@ -33,81 +33,84 @@
 
 namespace zrpc
 {
-    inline asio::ASIO_CONST_BUFFER writeBuffer(const void* data, std::size_t size_in_bytes, std::size_t offset)
+    namespace detail
     {
-        return asio::buffer(
-            (const char*)data + offset, size_in_bytes - offset);
-    }
-
-    inline asio::ASIO_MUTABLE_BUFFER readBuffer(void* data, std::size_t size_in_bytes, std::size_t offset)
-    {
-        return asio::buffer(
-            (char*)data + offset, size_in_bytes - offset);
-    }
-
-    template<typename S, typename F>
-    inline void asyncWrite(S& socket, const void* data, std::size_t size_in_bytes, std::size_t offset, F fn)
-    {
-        socket.async_write_some(
-            writeBuffer(data, size_in_bytes, offset),
-            fn);
-    }
-
-    template<typename S, typename F>
-    inline void asyncRead(S& socket, void* data, std::size_t size_in_bytes, std::size_t offset, F fn)
-    {
-        socket.async_read_some(
-            readBuffer(data, size_in_bytes, offset),
-            fn);
-    }
-
-    template<typename S, typename E, typename F>
-    inline void asyncConnect(S& socket, E endpoint, F fn)
-    {
-        socket.async_connect(endpoint, fn);
-    }
-
-    template<typename S, typename T, typename F>
-    inline void asyncWait(S& socket, T& timer, F fn)
-    {
-#if ZRPC_HAS_CXX_11
-        timer.async_wait([fn, &socket](asio::error_code error)
-            {
-                if (error)
-                {
-                    zdbg(error.message());
-                    return;
-                }
-                zdbg("timeout!");
-                socket.close();
-                return;
-});
-#else
-        struct Callback
+        inline asio::ASIO_CONST_BUFFER writeBuffer(const void* data, std::size_t size_in_bytes, std::size_t offset)
         {
-            Callback(S& socket_, F& fn_)
-                : socket(socket_)
-                , fn(fn_)
-            {
-            }
-            F& fn;
-            S& socket;
-            void operator()(asio::error_code error)
-            {
-                if (error)
+            return asio::buffer(
+                (const char*)data + offset, size_in_bytes - offset);
+        }
+
+        inline asio::ASIO_MUTABLE_BUFFER readBuffer(void* data, std::size_t size_in_bytes, std::size_t offset)
+        {
+            return asio::buffer(
+                (char*)data + offset, size_in_bytes - offset);
+        }
+
+        template<typename S, typename F>
+        inline void asyncWrite(S& socket, const void* data, std::size_t size_in_bytes, std::size_t offset, F fn)
+        {
+            socket.async_write_some(
+                detail::writeBuffer(data, size_in_bytes, offset),
+                fn);
+        }
+
+        template<typename S, typename F>
+        inline void asyncRead(S& socket, void* data, std::size_t size_in_bytes, std::size_t offset, F fn)
+        {
+            socket.async_read_some(
+                readBuffer(data, size_in_bytes, offset),
+                fn);
+        }
+
+        template<typename S, typename E, typename F>
+        inline void asyncConnect(S& socket, E endpoint, F fn)
+        {
+            socket.async_connect(endpoint, fn);
+        }
+
+        template<typename S, typename T, typename F>
+        inline void asyncWait(S& socket, T& timer, F fn)
+        {
+#if ZRPC_HAS_CXX_11
+            timer.async_wait([fn, &socket](asio::error_code error)
                 {
-                    zdbg(error.message());
+                    if (error)
+                    {
+                        zdbg(error.message());
+                        return;
+                    }
+                    zdbg("timeout!");
+                    socket.close();
+                    return;
+                });
+#else
+            struct Callback
+            {
+                Callback(S& socket_, F& fn_)
+                    : socket(socket_)
+                    , fn(fn_)
+                {
+                }
+                F& fn;
+                S& socket;
+                void operator()(asio::error_code error)
+                {
+                    if (error)
+                    {
+                        zdbg(error.message());
+                        return;
+                    }
+                    zdbg("timeout!");
+                    socket.close();
                     return;
                 }
-                zdbg("timeout!");
-                socket.close();
-                return;
-            }
-        };
-        Callback callback(socket, fn);
-        timer.async_wait(callback);
+            };
+            Callback callback(socket, fn);
+            timer.async_wait(callback);
 #endif // ZRPC_HAS_CXX_11
-}
+        }
+    }
 
     template<typename Protocol>
     class Server
@@ -131,7 +134,6 @@ namespace zrpc
         {
         }
 
-
         ~Server()
         {
         }
@@ -141,7 +143,7 @@ namespace zrpc
             timeout = milliseconds;
         }
 
-        ZRPC_USING(FnType, ZRPC_SHARED_PTR<detail::ICallable>);
+        typedef typename shared_ptr<detail::ICallable>::type FnType;
 
         std::string invoke(const detail::Call& inArg)
         {
@@ -176,15 +178,15 @@ namespace zrpc
         bool result;
         uint32_t timeout;
 
-        ZRPC_SHARED_PTR< typename Protocol::acceptor > acceptor;
-        ZRPC_SHARED_PTR< typename Protocol::socket > socket;
-        ZRPC_SHARED_PTR< detail::Call > call;
-        ZRPC_SHARED_PTR< std::string > send;
-        ZRPC_SHARED_PTR< detail::Header > header;
-        ZRPC_SHARED_PTR< detail::vector<char> > recv;
-        ZRPC_SHARED_PTR< std::string > hex;
-        ZRPC_SHARED_PTR< std::map<std::string, FnType> > process;
-        ZRPC_SHARED_PTR< asio::steady_timer > timer;
+        typename shared_ptr< typename Protocol::acceptor >::type acceptor;
+        typename shared_ptr< typename Protocol::socket >::type socket;
+        typename shared_ptr< detail::Call >::type call;
+        typename shared_ptr< std::string >::type send;
+        typename shared_ptr< detail::Header >::type header;
+        typename shared_ptr< detail::vector<char> >::type recv;
+        typename shared_ptr< std::string >::type hex;
+        typename shared_ptr< std::map<std::string, FnType> >::type process;
+        typename shared_ptr< asio::steady_timer >::type timer;
     };
 
     template<typename Protocol>
@@ -229,10 +231,10 @@ namespace zrpc
                         }
                         asyncRead(*socket, header.get(), sizeof(*header), offset, *this);
                     }
-                    if (timeout != 0)
-                    {
-                        timer->cancel();
-                    }
+                        if (timeout != 0)
+                        {
+                            timer->cancel();
+                        }
                     offset += bytes_transferred;
                 } while (offset < sizeof(*header));
                 LOG_IF(info, enable, "read header: {}", header->length);
@@ -254,10 +256,10 @@ namespace zrpc
                         }
                         asyncRead(*socket, recv->data(), header->length, offset, *this);
                     }
-                    if (timeout != 0)
-                    {
-                        timer->cancel();
-                    }
+                        if (timeout != 0)
+                        {
+                            timer->cancel();
+                        }
                     offset += bytes_transferred;
                 } while (offset < header->length);
                 LOG_IF(info, enable, "read body");
@@ -289,10 +291,10 @@ namespace zrpc
                         }
                         asyncWrite(*socket, header.get(), sizeof(*header), offset, *this);
                     }
-                    if (timeout != 0)
-                    {
-                        timer->cancel();
-                    }
+                        if (timeout != 0)
+                        {
+                            timer->cancel();
+                        }
                     offset += bytes_transferred;
                 } while (offset < sizeof(*header));
                 LOG_IF(info, enable, "write header: {}", header->length);
@@ -309,10 +311,10 @@ namespace zrpc
                         }
                         asyncWrite(*socket, send->c_str(), send->size(), offset, *this);
                     }
-                    if (timeout != 0)
-                    {
-                        timer->cancel();
-                    }
+                        if (timeout != 0)
+                        {
+                            timer->cancel();
+                        }
                     offset += bytes_transferred;
                 } while (offset < send->size());
                 LOG_IF(info, enable, "write body");

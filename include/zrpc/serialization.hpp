@@ -18,7 +18,7 @@ namespace zrpc
         }
 
         template<typename T>
-        inline void tryPack(const T& value, std::string& buffer)
+        inline bool tryPack(const T& value, std::string& buffer)
         {
             try
             {
@@ -30,6 +30,7 @@ namespace zrpc
                 std::cout << e.what() << std::endl;
                 return false;
             }
+            return false;
         }
 
         template<typename T>
@@ -84,6 +85,7 @@ namespace zrpc
                 std::cout << e.what() << std::endl;
                 return false;
             }
+            return false;
         }
 
         template<typename T>

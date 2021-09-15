@@ -1,6 +1,5 @@
 #pragma once
 #include "zrpc.h"
-//#include <msgpack_easy.hpp>
 #include <boost/algorithm/hex.hpp>
 
 #if ZRPC_CXX_STD_11
@@ -147,13 +146,13 @@ namespace zrpc
         };
 
         template<typename R, typename... Args>
-        ZRPC_SHARED_PTR<ICallable> makeCallable(std::function<R(Args...)> func_)
+        typename shared_ptr<ICallable>::type makeCallable(std::function<R(Args...)> func_)
         {
             return ZRPC_MAKE_SHARED<Callable<R, Args...>>(func_);
         }
 
         template<typename R, typename... Args>
-        ZRPC_SHARED_PTR<ICallable> makeCallable(R(*func_)(Args...))
+        typename shared_ptr<ICallable>::type makeCallable(R(*func_)(Args...))
         {
             return ZRPC_MAKE_SHARED<Callable<R, Args...>>(func_);
         }
@@ -182,200 +181,8 @@ namespace zrpc
             ZRPC_FUNCTION<R(T0)> func;
         };
 
-        //template<typename R, BOOST_PP_REPEAT(2, BOOST_PP_TYPENAME, T)>
-        //struct Callable2 : public ICallable
-        //{
-        //    Callable2(ZRPC_FUNCTION<R(BOOST_PP_REPEAT(2, BOOST_PP_TYPE, T))> func_)
-        //        : func(func_)
-        //    {
-        //    }
-        //    ~Callable2()
-        //    {
-        //    }
-        //    std::string call(std::string param)
-        //    {
-        //        msgpack::type::tuple<BOOST_PP_REPEAT(2, BOOST_PP_TYPE, T)> args;
-        //        bool u = tryUnpack(param.c_str(), param.size(), args);
-        //        if (!u)
-        //        {
-        //            return "";
-        //        }
-        //        R result = lite::apply(func, args);
-        //        return pack(result);
-        //    }
-        //    ZRPC_FUNCTION<R(BOOST_PP_REPEAT(2, BOOST_PP_TYPE, T))> func;
-        //};
-
-        //template<typename R, BOOST_PP_REPEAT(3, BOOST_PP_TYPENAME, T)>
-        //struct Callable3 : public ICallable
-        //{
-        //    Callable3(ZRPC_FUNCTION<R(BOOST_PP_REPEAT(3, BOOST_PP_TYPE, T))> func_)
-        //        : func(func_)
-        //    {
-        //    }
-        //    ~Callable3()
-        //    {
-        //    }
-        //    std::string call(std::string param)
-        //    {
-        //        msgpack::type::tuple<BOOST_PP_REPEAT(3, BOOST_PP_TYPE, T)> args;
-        //        bool u = tryUnpack(param.c_str(), param.size(), args);
-        //        if (!u)
-        //        {
-        //            return "";
-        //        }
-        //        R result = lite::apply(func, args);
-        //        return pack(result);
-        //    }
-        //    ZRPC_FUNCTION<R(BOOST_PP_REPEAT(3, BOOST_PP_TYPE, T))> func;
-        //};
-
-        //template<typename R, BOOST_PP_REPEAT(4, BOOST_PP_TYPENAME, T)>
-        //struct Callable4 : public ICallable
-        //{
-        //    Callable4(ZRPC_FUNCTION<R(BOOST_PP_REPEAT(4, BOOST_PP_TYPE, T))> func_)
-        //        : func(func_)
-        //    {
-        //    }
-        //    ~Callable4()
-        //    {
-        //    }
-        //    std::string call(std::string param)
-        //    {
-        //        msgpack::type::tuple<BOOST_PP_REPEAT(4, BOOST_PP_TYPE, T)> args;
-        //        bool u = tryUnpack(param.c_str(), param.size(), args);
-        //        if (!u)
-        //        {
-        //            return "";
-        //        }
-        //        R result = lite::apply(func, args);
-        //        return pack(result);
-        //    }
-        //    ZRPC_FUNCTION<R(BOOST_PP_REPEAT(4, BOOST_PP_TYPE, T))> func;
-        //};
-
-        //template<typename R, BOOST_PP_REPEAT(5, BOOST_PP_TYPENAME, T)>
-        //struct Callable5 : public ICallable
-        //{
-        //    Callable5(ZRPC_FUNCTION<R(BOOST_PP_REPEAT(5, BOOST_PP_TYPE, T))> func_)
-        //        : func(func_)
-        //    {
-        //    }
-        //    ~Callable5()
-        //    {
-        //    }
-        //    std::string call(std::string param)
-        //    {
-        //        msgpack::type::tuple<BOOST_PP_REPEAT(5, BOOST_PP_TYPE, T)> args;
-        //        bool u = tryUnpack(param.c_str(), param.size(), args);
-        //        if (!u)
-        //        {
-        //            return "";
-        //        }
-        //        R result = lite::apply(func, args);
-        //        return pack(result);
-        //    }
-        //    ZRPC_FUNCTION<R(BOOST_PP_REPEAT(5, BOOST_PP_TYPE, T))> func;
-        //};
-
-        //template<typename R, BOOST_PP_REPEAT(6, BOOST_PP_TYPENAME, T)>
-        //struct Callable6 : public ICallable
-        //{
-        //    Callable6(ZRPC_FUNCTION<R(BOOST_PP_REPEAT(6, BOOST_PP_TYPE, T))> func_)
-        //        : func(func_)
-        //    {
-        //    }
-        //    ~Callable6()
-        //    {
-        //    }
-        //    std::string call(std::string param)
-        //    {
-        //        msgpack::type::tuple<BOOST_PP_REPEAT(6, BOOST_PP_TYPE, T)> args;
-        //        bool u = tryUnpack(param.c_str(), param.size(), args);
-        //        if (!u)
-        //        {
-        //            return "";
-        //        }
-        //        R result = lite::apply(func, args);
-        //        return pack(result);
-        //    }
-        //    ZRPC_FUNCTION<R(BOOST_PP_REPEAT(6, BOOST_PP_TYPE, T))> func;
-        //};
-
-        //template<typename R, BOOST_PP_REPEAT(7, BOOST_PP_TYPENAME, T)>
-        //struct Callable7 : public ICallable
-        //{
-        //    Callable7(ZRPC_FUNCTION<R(BOOST_PP_REPEAT(7, BOOST_PP_TYPE, T))> func_)
-        //        : func(func_)
-        //    {
-        //    }
-        //    ~Callable7()
-        //    {
-        //    }
-        //    std::string call(std::string param)
-        //    {
-        //        msgpack::type::tuple<BOOST_PP_REPEAT(7, BOOST_PP_TYPE, T)> args;
-        //        bool u = tryUnpack(param.c_str(), param.size(), args);
-        //        if (!u)
-        //        {
-        //            return "";
-        //        }
-        //        R result = lite::apply(func, args);
-        //        return pack(result);
-        //    }
-        //    ZRPC_FUNCTION<R(BOOST_PP_REPEAT(7, BOOST_PP_TYPE, T))> func;
-        //};
-
-        //template<typename R, BOOST_PP_REPEAT(8, BOOST_PP_TYPENAME, T)>
-        //struct Callable8 : public ICallable
-        //{
-        //    Callable8(ZRPC_FUNCTION<R(BOOST_PP_REPEAT(8, BOOST_PP_TYPE, T))> func_)
-        //        : func(func_)
-        //    {
-        //    }
-        //    ~Callable8()
-        //    {
-        //    }
-        //    std::string call(std::string param)
-        //    {
-        //        msgpack::type::tuple<BOOST_PP_REPEAT(8, BOOST_PP_TYPE, T)> args;
-        //        bool u = tryUnpack(param.c_str(), param.size(), args);
-        //        if (!u)
-        //        {
-        //            return "";
-        //        }
-        //        R result = lite::apply(func, args);
-        //        return pack(result);
-        //    }
-        //    ZRPC_FUNCTION<R(BOOST_PP_REPEAT(8, BOOST_PP_TYPE, T))> func;
-        //};
-
-        //template<typename R, BOOST_PP_REPEAT(9, BOOST_PP_TYPENAME, T)>
-        //struct Callable9 : public ICallable
-        //{
-        //    Callable9(ZRPC_FUNCTION<R(BOOST_PP_REPEAT(9, BOOST_PP_TYPE, T))> func_)
-        //        : func(func_)
-        //    {
-        //    }
-        //    ~Callable9()
-        //    {
-        //    }
-        //    std::string call(std::string param)
-        //    {
-        //        msgpack::type::tuple<BOOST_PP_REPEAT(9, BOOST_PP_TYPE, T)> args;
-        //        bool u = tryUnpack(param.c_str(), param.size(), args);
-        //        if (!u)
-        //        {
-        //            return "";
-        //        }
-        //        R result = lite::apply(func, args);
-        //        return pack(result);
-        //    }
-        //    ZRPC_FUNCTION<R(BOOST_PP_REPEAT(9, BOOST_PP_TYPE, T))> func;
-        //};
-
 #ifndef ZRPC_CALLABLE
-#define ZRPC_CALLABLE(z, n, _) \
+#  define ZRPC_CALLABLE(z, n, _) \
         template<typename R, BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPENAME, T)> \
         struct BOOST_PP_CAT(Callable, n) : public ICallable \
         { \
@@ -402,138 +209,27 @@ namespace zrpc
         BOOST_PP_REPEAT_FROM_TO(2, 10, ZRPC_CALLABLE, _)
 #endif
 
-        //template< \
-        //    typename R BOOST_PP_COMMA_IF(n) \
-        //    BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPENAME, T)> \
-        //ZRPC_SHARED_PTR<ICallable> makeCallable(ZRPC_FUNCTION<R(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T))> func_) \
-        //{ \
-        //    return ZRPC_MAKE_SHARED<BOOST_PP_CAT(Callable, n)<R BOOST_PP_COMMA_IF(n) BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)> >(func_); \
-        //} \
-        //template<typename R BOOST_PP_COMMA_IF(n) BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPENAME, T)> \
-        //ZRPC_SHARED_PTR<ICallable> makeCallable(R(*func_)(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T))) \
-        //{ \
-        //    return ZRPC_MAKE_SHARED<BOOST_PP_CAT(Callable, n)<R BOOST_PP_COMMA_IF(n) BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)> >(func_); \
-        //}
-
-        //BOOST_PP_REPEAT(10, ZRPC_CALLABLE, _);
-
         template<typename R, typename T0>
-        inline ZRPC_SHARED_PTR<ICallable> makeCallable(ZRPC_FUNCTION < R(T0) > func_)
+        inline typename shared_ptr<ICallable>::type makeCallable(ZRPC_FUNCTION < R(T0) > func_)
         {
             return ZRPC_MAKE_SHARED< Callable1<R, T0> >(func_);
         }
 
         template<typename R, typename T0>
-        inline ZRPC_SHARED_PTR<ICallable> makeCallable(R(*func_)(T0))
+        inline typename shared_ptr<ICallable>::type makeCallable(R(*func_)(T0))
         {
             return ZRPC_MAKE_SHARED< Callable1<R, T0> >(func_);
         }
-
-        //template<typename R, BOOST_PP_REPEAT(2, BOOST_PP_TYPENAME, T)>
-        //inline ZRPC_SHARED_PTR<ICallable> makeCallable(ZRPC_FUNCTION < R(BOOST_PP_REPEAT(2, BOOST_PP_TYPE, T)) > func_)
-        //{
-        //    return ZRPC_MAKE_SHARED< Callable2<R, BOOST_PP_REPEAT(2, BOOST_PP_TYPE, T)> >(func_);
-        //}
-
-        //template<typename R, BOOST_PP_REPEAT(2, BOOST_PP_TYPENAME, T)>
-        //inline ZRPC_SHARED_PTR<ICallable> makeCallable(R(*func_)(BOOST_PP_REPEAT(2, BOOST_PP_TYPE, T)))
-        //{
-        //    return ZRPC_MAKE_SHARED< Callable2<R, BOOST_PP_REPEAT(2, BOOST_PP_TYPE, T)> >(func_);
-        //}
-
-        //template<typename R, BOOST_PP_REPEAT(3, BOOST_PP_TYPENAME, T)>
-        //inline ZRPC_SHARED_PTR<ICallable> makeCallable(ZRPC_FUNCTION < R(BOOST_PP_REPEAT(3, BOOST_PP_TYPE, T)) > func_)
-        //{
-        //    return ZRPC_MAKE_SHARED< Callable3<R, BOOST_PP_REPEAT(3, BOOST_PP_TYPE, T)> >(func_);
-        //}
-
-        //template<typename R, BOOST_PP_REPEAT(3, BOOST_PP_TYPENAME, T)>
-        //inline ZRPC_SHARED_PTR<ICallable> makeCallable(R(*func_)(BOOST_PP_REPEAT(3, BOOST_PP_TYPE, T)))
-        //{
-        //    return ZRPC_MAKE_SHARED< Callable3<R, BOOST_PP_REPEAT(3, BOOST_PP_TYPE, T)> >(func_);
-        //}
-
-        //template<typename R, BOOST_PP_REPEAT(4, BOOST_PP_TYPENAME, T)>
-        //inline ZRPC_SHARED_PTR<ICallable> makeCallable(ZRPC_FUNCTION < R(BOOST_PP_REPEAT(4, BOOST_PP_TYPE, T)) > func_)
-        //{
-        //    return ZRPC_MAKE_SHARED< Callable4<R, BOOST_PP_REPEAT(4, BOOST_PP_TYPE, T)> >(func_);
-        //}
-
-        //template<typename R, BOOST_PP_REPEAT(4, BOOST_PP_TYPENAME, T)>
-        //inline ZRPC_SHARED_PTR<ICallable> makeCallable(R(*func_)(BOOST_PP_REPEAT(4, BOOST_PP_TYPE, T)))
-        //{
-        //    return ZRPC_MAKE_SHARED< Callable4<R, BOOST_PP_REPEAT(4, BOOST_PP_TYPE, T)> >(func_);
-        //}
-
-        //template<typename R, BOOST_PP_REPEAT(5, BOOST_PP_TYPENAME, T)>
-        //inline ZRPC_SHARED_PTR<ICallable> makeCallable(ZRPC_FUNCTION < R(BOOST_PP_REPEAT(5, BOOST_PP_TYPE, T)) > func_)
-        //{
-        //    return ZRPC_MAKE_SHARED< Callable5<R, BOOST_PP_REPEAT(5, BOOST_PP_TYPE, T)> >(func_);
-        //}
-
-        //template<typename R, BOOST_PP_REPEAT(5, BOOST_PP_TYPENAME, T)>
-        //inline ZRPC_SHARED_PTR<ICallable> makeCallable(R(*func_)(BOOST_PP_REPEAT(5, BOOST_PP_TYPE, T)))
-        //{
-        //    return ZRPC_MAKE_SHARED< Callable5<R, BOOST_PP_REPEAT(5, BOOST_PP_TYPE, T)> >(func_);
-        //}
-
-        //template<typename R, BOOST_PP_REPEAT(6, BOOST_PP_TYPENAME, T)>
-        //inline ZRPC_SHARED_PTR<ICallable> makeCallable(ZRPC_FUNCTION < R(BOOST_PP_REPEAT(6, BOOST_PP_TYPE, T)) > func_)
-        //{
-        //    return ZRPC_MAKE_SHARED< Callable6<R, BOOST_PP_REPEAT(6, BOOST_PP_TYPE, T)> >(func_);
-        //}
-
-        //template<typename R, BOOST_PP_REPEAT(6, BOOST_PP_TYPENAME, T)>
-        //inline ZRPC_SHARED_PTR<ICallable> makeCallable(R(*func_)(BOOST_PP_REPEAT(6, BOOST_PP_TYPE, T)))
-        //{
-        //    return ZRPC_MAKE_SHARED< Callable6<R, BOOST_PP_REPEAT(6, BOOST_PP_TYPE, T)> >(func_);
-        //}
-
-        //template<typename R, BOOST_PP_REPEAT(7, BOOST_PP_TYPENAME, T)>
-        //inline ZRPC_SHARED_PTR<ICallable> makeCallable(ZRPC_FUNCTION < R(BOOST_PP_REPEAT(7, BOOST_PP_TYPE, T)) > func_)
-        //{
-        //    return ZRPC_MAKE_SHARED< Callable7<R, BOOST_PP_REPEAT(7, BOOST_PP_TYPE, T)> >(func_);
-        //}
-
-        //template<typename R, BOOST_PP_REPEAT(7, BOOST_PP_TYPENAME, T)>
-        //inline ZRPC_SHARED_PTR<ICallable> makeCallable(R(*func_)(BOOST_PP_REPEAT(7, BOOST_PP_TYPE, T)))
-        //{
-        //    return ZRPC_MAKE_SHARED< Callable7<R, BOOST_PP_REPEAT(7, BOOST_PP_TYPE, T)> >(func_);
-        //}
-
-        //template<typename R, BOOST_PP_REPEAT(8, BOOST_PP_TYPENAME, T)>
-        //inline ZRPC_SHARED_PTR<ICallable> makeCallable(ZRPC_FUNCTION < R(BOOST_PP_REPEAT(8, BOOST_PP_TYPE, T)) > func_)
-        //{
-        //    return ZRPC_MAKE_SHARED< Callable8<R, BOOST_PP_REPEAT(8, BOOST_PP_TYPE, T)> >(func_);
-        //}
-
-        //template<typename R, BOOST_PP_REPEAT(8, BOOST_PP_TYPENAME, T)>
-        //inline ZRPC_SHARED_PTR<ICallable> makeCallable(R(*func_)(BOOST_PP_REPEAT(8, BOOST_PP_TYPE, T)))
-        //{
-        //    return ZRPC_MAKE_SHARED< Callable8<R, BOOST_PP_REPEAT(8, BOOST_PP_TYPE, T)> >(func_);
-        //}
-
-        //template<typename R, BOOST_PP_REPEAT(9, BOOST_PP_TYPENAME, T)>
-        //inline ZRPC_SHARED_PTR<ICallable> makeCallable(ZRPC_FUNCTION < R(BOOST_PP_REPEAT(9, BOOST_PP_TYPE, T)) > func_)
-        //{
-        //    return ZRPC_MAKE_SHARED< Callable9<R, BOOST_PP_REPEAT(9, BOOST_PP_TYPE, T)> >(func_);
-        //}
-
-        //template<typename R, BOOST_PP_REPEAT(9, BOOST_PP_TYPENAME, T)>
-        //inline ZRPC_SHARED_PTR<ICallable> makeCallable(R(*func_)(BOOST_PP_REPEAT(9, BOOST_PP_TYPE, T)))
-        //{
-        //    return ZRPC_MAKE_SHARED< Callable9<R, BOOST_PP_REPEAT(9, BOOST_PP_TYPE, T)> >(func_);
-        //}
 
 #ifndef ZRPC_MAKE_CALLABLE
-#define ZRPC_MAKE_CALLABLE(z, n, _) \
+#  define ZRPC_MAKE_CALLABLE(z, n, _) \
         template<typename R, BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPENAME, T)> \
-        inline ZRPC_SHARED_PTR<ICallable> makeCallable(ZRPC_FUNCTION < R(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)) > func_) \
+        inline typename shared_ptr<ICallable>::type makeCallable(ZRPC_FUNCTION < R(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)) > func_) \
         { \
             return ZRPC_MAKE_SHARED< BOOST_PP_CAT(Callable, n)<R, BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)> >(func_); \
         } \
         template<typename R, BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPENAME, T)> \
-        inline ZRPC_SHARED_PTR<ICallable> makeCallable(R(*func_)(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T))) \
+        inline typename shared_ptr<ICallable>::type makeCallable(R(*func_)(BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T))) \
         { \
             return ZRPC_MAKE_SHARED< BOOST_PP_CAT(Callable, n)<R, BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)> >(func_); \
         }
