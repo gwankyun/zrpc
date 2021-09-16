@@ -157,4 +157,5 @@ namespace zrpc
 
     typedef asio::ASIO_CONST_BUFFER ConstBuffer;
     typedef asio::ASIO_MUTABLE_BUFFER MutableBuffer;
+    typedef asio::io_context io_context;
 }

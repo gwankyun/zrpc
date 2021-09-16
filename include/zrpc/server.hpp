@@ -14,34 +14,46 @@
 #  include <boost/tuple/tuple.hpp>
 #  include <boost/shared_ptr.hpp>
 #  include <boost/make_shared.hpp>
-#endif // ZRPC_HAS_CXX_11
+#endif
 
 #ifndef ZRPC_USING
 #  if ZRPC_HAS_CXX_11
 #    define ZRPC_USING(n, o) using n = o
 #  else
 #    define ZRPC_USING(n, o) typedef o n
-#  endif // ZRPC_HAS_CXX_11
-#endif // !ZRPC_USING
+#  endif
+#endif
 
 #if defined(__cpp_lib_apply)
 #  define ZRPC_APPLY(fn, ...) std::apply(fn, ##__VA_ARGS__)
 #else
 #  include <apply.hpp>
 #  define ZRPC_APPLY(fn, ...) lite::apply(fn, ##__VA_ARGS__)
-#endif // defined(__cpp_lib_apply)
+#endif
+
+#ifndef ZRPC_CORO_REENTER
+#  define ZRPC_CORO_REENTER ASIO_CORO_REENTER
+#endif
+
+#ifndef ZRPC_CORO_YIELD
+#  define ZRPC_CORO_YIELD ASIO_CORO_YIELD
+#endif
+
+#ifndef ZRPC_CORO_FORK
+#  define ZRPC_CORO_FORK ASIO_CORO_FORK
+#endif
 
 namespace zrpc
 {
     namespace detail
     {
-        inline asio::ASIO_CONST_BUFFER writeBuffer(const void* data, std::size_t size_in_bytes, std::size_t offset)
+        inline ConstBuffer writeBuffer(const void* data, std::size_t size_in_bytes, std::size_t offset)
         {
             return asio::buffer(
                 (const char*)data + offset, size_in_bytes - offset);
         }
 
-        inline asio::ASIO_MUTABLE_BUFFER readBuffer(void* data, std::size_t size_in_bytes, std::size_t offset)
+        inline MutableBuffer readBuffer(void* data, std::size_t size_in_bytes, std::size_t offset)
         {
             return asio::buffer(
                 (char*)data + offset, size_in_bytes - offset);
@@ -108,7 +120,7 @@ namespace zrpc
             };
             Callback callback(socket, fn);
             timer.async_wait(callback);
-#endif // ZRPC_HAS_CXX_11
+#endif
         }
     }
 
@@ -126,7 +138,7 @@ namespace zrpc
         }
 
         explicit Server(
-            asio::io_context& context,
+            io_context& context,
             Protocol protocol, uint16_t port
         )
             : acceptor(new Protocol::acceptor(context, Protocol::endpoint(protocol, port)))
@@ -158,6 +170,13 @@ namespace zrpc
             }
         }
 
+        template<typename F>
+        void asyncInvoke(const detail::Call& inArg, F fn)
+        {
+            *send = invoke(inArg);
+            fn(asio::error_code(), 0);
+        }
+
         template<typename Fn>
         void bind(std::string func, Fn fn)
         {
@@ -187,6 +206,23 @@ namespace zrpc
         typename shared_ptr< std::string >::type hex;
         typename shared_ptr< std::map<std::string, FnType> >::type process;
         typename shared_ptr< asio::steady_timer >::type timer;
+
+        void wait(typename shared_ptr< asio::steady_timer >::type timer)
+        {
+            if (timeout != 0)
+            {
+                timer.reset(new asio::steady_timer(socket->get_executor(), asio::chrono::milliseconds(timeout)));
+                detail::asyncWait(*socket, *timer, *this);
+            }
+        }
+
+        void cancelWait(typename shared_ptr< asio::steady_timer >::type timer)
+        {
+            if (timeout != 0)
+            {
+                timer->cancel();
+            }
+        }
     };
 
     template<typename Protocol>
@@ -195,7 +231,7 @@ namespace zrpc
         enable = true;
         if (!error)
         {
-            ASIO_CORO_REENTER(coro) while (true)
+            ZRPC_CORO_REENTER(coro) while (true)
             {
                 using namespace detail;
                 // async_accept
@@ -208,8 +244,8 @@ namespace zrpc
                     }
                     LOG_IF(info, enable, "async_accept");
                     socket.reset(new Protocol::socket(acceptor->get_executor()));
-                    ASIO_CORO_YIELD acceptor->async_accept(*socket, *this);
-                    ASIO_CORO_FORK Server(*this)();
+                    ZRPC_CORO_YIELD acceptor->async_accept(*socket, *this);
+                    ZRPC_CORO_FORK Server(*this)();
                 } while (coro.is_parent());
 
                 child = true;
@@ -222,19 +258,12 @@ namespace zrpc
                 offset = 0;
                 do
                 {
-                    ASIO_CORO_YIELD
+                    ZRPC_CORO_YIELD
                     {
-                        if (timeout != 0)
-                        {
-                            timer.reset(new asio::steady_timer(socket->get_executor(), asio::chrono::milliseconds(timeout)));
-                            asyncWait(*socket, *timer, *this);
-                        }
+                        wait(timer);
                         asyncRead(*socket, header.get(), sizeof(*header), offset, *this);
-                    }
-                        if (timeout != 0)
-                        {
-                            timer->cancel();
-                        }
+                    };
+                    cancelWait(timer);
                     offset += bytes_transferred;
                 } while (offset < sizeof(*header));
                 LOG_IF(info, enable, "read header: {}", header->length);
@@ -247,19 +276,12 @@ namespace zrpc
                 offset = 0;
                 do
                 {
-                    ASIO_CORO_YIELD
+                    ZRPC_CORO_YIELD
                     {
-                        if (timeout != 0)
-                        {
-                            timer.reset(new asio::steady_timer(socket->get_executor(), asio::chrono::milliseconds(timeout)));
-                            asyncWait(*socket, *timer, *this);
-                        }
+                        wait(timer);
                         asyncRead(*socket, recv->data(), header->length, offset, *this);
-                    }
-                        if (timeout != 0)
-                        {
-                            timer->cancel();
-                        }
+                    };
+                    cancelWait(timer);
                     offset += bytes_transferred;
                 } while (offset < header->length);
                 LOG_IF(info, enable, "read body");
@@ -274,7 +296,11 @@ namespace zrpc
                 LOG_IF(info, enable, "func: {}", call->func);
 
                 send.reset(new std::string());
-                *send = invoke(*call);
+
+                ZRPC_CORO_YIELD
+                {
+                    asyncInvoke(*call, *this);
+                };
 
                 initialize(*header);
                 header->length = send->size();
@@ -282,19 +308,12 @@ namespace zrpc
                 offset = 0;
                 do
                 {
-                    ASIO_CORO_YIELD
+                    ZRPC_CORO_YIELD
                     {
-                        if (timeout != 0)
-                        {
-                            timer.reset(new asio::steady_timer(socket->get_executor(), asio::chrono::milliseconds(timeout)));
-                            asyncWait(*socket, *timer, *this);
-                        }
+                        wait(timer);
                         asyncWrite(*socket, header.get(), sizeof(*header), offset, *this);
-                    }
-                        if (timeout != 0)
-                        {
-                            timer->cancel();
-                        }
+                    };
+                    cancelWait(timer);
                     offset += bytes_transferred;
                 } while (offset < sizeof(*header));
                 LOG_IF(info, enable, "write header: {}", header->length);
@@ -302,19 +321,12 @@ namespace zrpc
                 offset = 0;
                 do
                 {
-                    ASIO_CORO_YIELD
+                    ZRPC_CORO_YIELD
                     {
-                        if (timeout != 0)
-                        {
-                            timer.reset(new asio::steady_timer(socket->get_executor(), asio::chrono::milliseconds(timeout)));
-                            asyncWait(*socket, *timer, *this);
-                        }
+                        wait(timer);
                         asyncWrite(*socket, send->c_str(), send->size(), offset, *this);
-                    }
-                        if (timeout != 0)
-                        {
-                            timer->cancel();
-                        }
+                    };
+                    cancelWait(timer);
                     offset += bytes_transferred;
                 } while (offset < send->size());
                 LOG_IF(info, enable, "write body");
