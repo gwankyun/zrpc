@@ -1,4 +1,4 @@
-function(target_install target ver)
+function(target_install target ver namespace)
   include(GNUInstallDirs)
 
   # install the target and create export-set
@@ -60,6 +60,6 @@ function(target_install target ver)
   # generate the export targets for the build tree
   export(EXPORT ${target}Targets
     FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake/${target}Targets.cmake"
-    NAMESPACE ${target}::
+    NAMESPACE ${namespace}::
   )
 endfunction()

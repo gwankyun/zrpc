@@ -1,8 +1,7 @@
 #pragma once
-#include <asio.hpp>
 #include <apply.hpp>
 
-#define ZRPC_HAS_CXX_11 0
+//#define ZRPC_HAS_CXX_11 0
 #ifndef ZRPC_HAS_CXX_11
 #  if __cplusplus >= 201103L || (defined(__cpp_variadic_templates) && defined(__cpp_rvalue_references))
 #    define ZRPC_HAS_CXX_11 1
@@ -22,7 +21,7 @@
 #if !ZRPC_HAS_CXX_11
 #  include <boost/preprocessor.hpp>
 #  include <boost/function.hpp>
-#endif // !ZRPC_HAS_CXX_11
+#endif
 
 #if ZRPC_HAS_CXX_17
 //#  include <dbg.h>
@@ -154,8 +153,4 @@ namespace zrpc
 //        typedef boost::enable_shared_from_this<T> type;
 //#endif
 //    };
-
-    typedef asio::ASIO_CONST_BUFFER ConstBuffer;
-    typedef asio::ASIO_MUTABLE_BUFFER MutableBuffer;
-    typedef asio::io_context io_context;
 }

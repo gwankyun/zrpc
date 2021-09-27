@@ -3,8 +3,15 @@
 #include <memory>
 //#define ZRPC_HAS_CXX_11 0
 #define ZRPC_DEBUG 1
-#include <zrpc.hpp>
+#include <zrpc/server.hpp>
 //#include <dbg.h>
+
+#if ZRPC_USE_BOOST_ASIO
+#  include <boost/asio.hpp>
+namespace asio = boost::asio;
+#else
+#  include <asio.hpp>
+#endif
 
 int f1(int a)
 {
@@ -72,13 +79,10 @@ std::vector<char> getVector(int n)
 
 int main()
 {
-    //spdlog::easy::initialize(20, 30);
-    LOG(info, "server");
     asio::io_context io_context;
 
     {
-        zrpc::Server<asio::ip::tcp> server(io_context, asio::ip::tcp::v4(), 3344);
-        //ZRPC_SHARED_PTR< zrpc::Server<asio::ip::tcp> > server(ZRPC_MAKE_SHARED< zrpc::Server<asio::ip::tcp> >(io_context, asio::ip::tcp::v4(), 3344));
+        zrpc::Server<asio::io_context, asio::ip::tcp> server(io_context, asio::ip::tcp::v4(), 3344);
         server.setTimeout(3 * 1000);
         server.bind("add", add);
         server.bind("getVector", getVector);
@@ -97,7 +101,6 @@ int main()
         }
         catch (const std::exception& e)
         {
-            //dbg(e.what());
             std::cout << e.what() << std::endl;
         }
     }

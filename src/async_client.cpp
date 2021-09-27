@@ -3,12 +3,19 @@
 #include <memory>
 //#define ZRPC_HAS_CXX_11 1
 #define ZRPC_DEBUG 1
-#include <zrpc.hpp>
+#include <zrpc/client.hpp>
 //#include <dbg.h>
+
+#if ZRPC_USE_BOOST_ASIO
+#  include <boost/asio.hpp>
+namespace asio = boost::asio;
+#else
+#  include <asio.hpp>
+#endif
 
 int count = 0;
 
-void onResult(asio::error_code error, int& result, typename zrpc::shared_ptr<zrpc::Client<asio::ip::tcp>>::type client)
+void onResult(zrpc::error_code error, int& result, typename zrpc::shared_ptr<zrpc::Client<asio::io_context, asio::ip::tcp>>::type client)
 {
     if (error)
     {
@@ -20,7 +27,7 @@ void onResult(asio::error_code error, int& result, typename zrpc::shared_ptr<zrp
         {
             return;
         }
-        client->asyncCall<int>("add", [client](asio::error_code e, int& result)
+        client->asyncCall<int>("add", [client](zrpc::error_code e, int& result)
             {
                 onResult(e, result, client);
             }, 0, 0);
@@ -30,7 +37,7 @@ void onResult(asio::error_code error, int& result, typename zrpc::shared_ptr<zrp
     std::cout << result << std::endl;
 }
 
-void onConnect(asio::error_code error, typename zrpc::shared_ptr<zrpc::Client<asio::ip::tcp>>::type client)
+void onConnect(zrpc::error_code error, typename zrpc::shared_ptr<zrpc::Client<asio::io_context, asio::ip::tcp>>::type client)
 {
     if (error)
     {
@@ -40,7 +47,7 @@ void onConnect(asio::error_code error, typename zrpc::shared_ptr<zrpc::Client<as
     }
     //dbg("connect");
     std::cout << "connect" << std::endl;
-    client->asyncCall<int>("add", [client](asio::error_code e, int& result)
+    client->asyncCall<int>("add", [client](zrpc::error_code e, int& result)
         {
             onResult(e, result, client);
         //}, std::string("yes"));
@@ -51,9 +58,9 @@ int main()
 {
     asio::io_context io_context;
 
-    auto client = ZRPC_MAKE_SHARED<zrpc::Client<asio::ip::tcp>>(io_context);
+    auto client = ZRPC_MAKE_SHARED<zrpc::Client<asio::io_context, asio::ip::tcp>>(io_context);
 
-    client->asyncConnect("127.0.0.1", 3344, [client](asio::error_code error)
+    client->asyncConnect("127.0.0.1", 3344, [client](zrpc::error_code error)
         {
             onConnect(error, client);
         });

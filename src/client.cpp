@@ -3,15 +3,22 @@
 #include <memory>
 #include <vector>
 //#define ZRPC_HAS_CXX_11 0
-#include <zrpc.hpp>
+#include <zrpc/client.hpp>
 //#include <dbg.h>
 #include <boost/optional/optional_io.hpp>
+
+#if ZRPC_USE_BOOST_ASIO
+#  include <boost/asio.hpp>
+namespace asio = boost::asio;
+#else
+#  include <asio.hpp>
+#endif
 
 int main()
 {
     asio::io_context io_context;
 
-    zrpc::Client<asio::ip::tcp> client(io_context);
+    zrpc::Client<asio::io_context, asio::ip::tcp> client(io_context);
     client.connect("127.0.0.1", 3344);
 
     auto error = client.tryCall<int>("add", "1");

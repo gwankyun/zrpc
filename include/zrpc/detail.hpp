@@ -9,7 +9,14 @@
 #define LOG(...)
 #define LOG_IF(...)
 #endif
-#endif // ZRPC_CXX_STD_11
+#endif
+
+#if ZRPC_HAS_CXX_11
+#  include <functional>
+#  include <memory>
+#endif
+
+#include <msgpack.hpp>
 
 namespace zrpc
 {
@@ -17,6 +24,8 @@ namespace zrpc
     {
         typedef unsigned __int32 uint32_t;
         typedef unsigned __int16 uint16_t;
+
+        using msgpack::type::tuple;
 
         struct Header
         {
@@ -121,7 +130,7 @@ namespace zrpc
         template<typename R, typename... Args>
         struct Callable : public ICallable
         {
-            Callable(ZRPC_FUNCTION<R(Args...)> func_)
+            Callable(std::function<R(Args...)> func_)
                 : func(func_)
             {
             }
@@ -132,7 +141,7 @@ namespace zrpc
 
             std::string call(std::string param) override
             {
-                msgpack::type::tuple<Args...> args;
+                tuple<Args...> args;
                 bool r = tryUnpack(param.c_str(), param.size(), args);
                 if (!r)
                 {
@@ -142,19 +151,19 @@ namespace zrpc
                 return pack(result);
             }
 
-            ZRPC_FUNCTION<R(Args...)> func;
+            std::function<R(Args...)> func;
         };
 
         template<typename R, typename... Args>
-        typename shared_ptr<ICallable>::type makeCallable(std::function<R(Args...)> func_)
+        std::shared_ptr<ICallable> makeCallable(std::function<R(Args...)> func_)
         {
-            return ZRPC_MAKE_SHARED<Callable<R, Args...>>(func_);
+            return std::make_shared<Callable<R, Args...>>(func_);
         }
 
         template<typename R, typename... Args>
-        typename shared_ptr<ICallable>::type makeCallable(R(*func_)(Args...))
+        std::shared_ptr<ICallable> makeCallable(R(*func_)(Args...))
         {
-            return ZRPC_MAKE_SHARED<Callable<R, Args...>>(func_);
+            return std::make_shared<Callable<R, Args...>>(func_);
         }
 #else
         template<typename R, typename T0>
@@ -169,7 +178,7 @@ namespace zrpc
             }
             std::string call(std::string param)
             {
-                msgpack::type::tuple<T0> args;
+                tuple<T0> args;
                 bool u = tryUnpack(param.c_str(), param.size(), args);
                 if (!u)
                 {
@@ -195,7 +204,7 @@ namespace zrpc
             } \
             std::string call(std::string param) \
             { \
-                msgpack::type::tuple<BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)> args; \
+                tuple<BOOST_PP_REPEAT_Z(z, n, BOOST_PP_TYPE, T)> args; \
                 bool u = tryUnpack(param.c_str(), param.size(), args); \
                 if (!u) \
                 { \
