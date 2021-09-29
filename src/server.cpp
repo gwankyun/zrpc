@@ -82,7 +82,7 @@ int main()
     asio::io_context io_context;
 
     {
-        zrpc::Server<asio::io_context, asio::ip::tcp> server(io_context, asio::ip::tcp::v4(), 3344);
+        auto server = zrpc::makeServer(io_context, asio::ip::tcp::v4(), 3344);
         server.setTimeout(3 * 1000);
         server.bind("add", add);
         server.bind("getVector", getVector);

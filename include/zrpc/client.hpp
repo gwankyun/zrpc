@@ -116,8 +116,8 @@ namespace zrpc
         }
     }
 
-    template<typename Context, typename Protocol>
-    class Client : public ZRPC_ENABLE_SHARED_FROM_THIS< Client<Context, Protocol> >
+    template<typename Protocol, typename Context>
+    class Client : public ZRPC_ENABLE_SHARED_FROM_THIS< Client<Protocol, Context> >
     {
     public:
         explicit Client(
@@ -346,7 +346,7 @@ namespace zrpc
         typedef detail::error_code error_code;
         error_code lastErrorCode_;
 
-        typedef Client<Context, Protocol> ClientType;
+        typedef Client<Protocol, Context> ClientType;
         typedef typename shared_ptr< ClientType >::type ClientSharedPtr;
 
         template<typename T, typename F>
@@ -692,4 +692,10 @@ namespace zrpc
 #endif
         }
     };
+
+    template<typename Protocol, typename Context>
+    Client<Protocol, Context> makeClient(Context& context)
+    {
+        return Client<Protocol, Context>(context);
+    }
 }

@@ -18,7 +18,7 @@ int main()
 {
     asio::io_context io_context;
 
-    zrpc::Client<asio::io_context, asio::ip::tcp> client(io_context);
+    auto client = zrpc::makeClient<asio::ip::tcp>(io_context);
     client.connect("127.0.0.1", 3344);
 
     auto error = client.tryCall<int>("add", "1");

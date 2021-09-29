@@ -117,7 +117,8 @@ namespace zrpc
 
         explicit Server(
             Context& context,
-            Protocol protocol, uint16_t port
+            Protocol protocol,
+            uint16_t port
         )
             : acceptor(new Acceptor(context, Protocol::endpoint(protocol, port)))
             , child(false), enable(false), offset(0)
@@ -210,8 +211,8 @@ namespace zrpc
         }
     };
 
-    template<typename Context, typename Protocol>
-    void Server<Context, Protocol>::operator()(detail::error_code error, std::size_t bytes_transferred)
+    template<typename Protocol , typename Context>
+    void Server<Protocol, Context>::operator()(detail::error_code error, std::size_t bytes_transferred)
     {
         enable = true;
         if (!error)
@@ -321,5 +322,15 @@ namespace zrpc
         {
             zdbg(error.message());
         }
+    }
+
+    template<typename Context, typename Protocol>
+    Server<Context, Protocol> makeServer(
+        Context& context,
+        Protocol protocol,
+        uint16_t port
+    )
+    {
+        return Server<Context, Protocol>(context, protocol, port);
     }
 }

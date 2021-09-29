@@ -15,7 +15,9 @@ namespace asio = boost::asio;
 
 int count = 0;
 
-void onResult(zrpc::error_code error, int& result, typename zrpc::shared_ptr<zrpc::Client<asio::io_context, asio::ip::tcp>>::type client)
+using ClientType = zrpc::Client< asio::ip::tcp, asio::io_context >;
+
+void onResult(zrpc::error_code error, int& result, typename zrpc::shared_ptr<ClientType>::type client)
 {
     if (error)
     {
@@ -37,7 +39,7 @@ void onResult(zrpc::error_code error, int& result, typename zrpc::shared_ptr<zrp
     std::cout << result << std::endl;
 }
 
-void onConnect(zrpc::error_code error, typename zrpc::shared_ptr<zrpc::Client<asio::io_context, asio::ip::tcp>>::type client)
+void onConnect(zrpc::error_code error, typename zrpc::shared_ptr<ClientType>::type client)
 {
     if (error)
     {
@@ -58,7 +60,7 @@ int main()
 {
     asio::io_context io_context;
 
-    auto client = ZRPC_MAKE_SHARED<zrpc::Client<asio::io_context, asio::ip::tcp>>(io_context);
+    auto client = ZRPC_MAKE_SHARED<ClientType>(io_context);
 
     client->asyncConnect("127.0.0.1", 3344, [client](zrpc::error_code error)
         {
