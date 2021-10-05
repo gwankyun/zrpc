@@ -2,7 +2,7 @@
 #include <string>
 #include <memory>
 #include <vector>
-//#define ZRPC_HAS_CXX_11 0
+#define ZRPC_HAS_CXX_11 0
 #include <zrpc/client.hpp>
 //#include <dbg.h>
 #include <boost/optional/optional_io.hpp>

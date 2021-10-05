@@ -104,6 +104,14 @@
 #  endif
 #endif
 
+#ifndef ZRPC_HAS_CONCEPTS
+#  if defined(__cpp_concepts)
+#    define ZRPC_HAS_CONCEPTS 1
+#  else
+#    define ZRPC_HAS_CONCEPTS 0
+#  endif
+#endif
+
 namespace zrpc
 {
     typedef unsigned __int32 uint32_t;

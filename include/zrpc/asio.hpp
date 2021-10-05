@@ -28,4 +28,20 @@ namespace zrpc
 #endif
     }
     using detail::error_code;
+
+#if ZRPC_HAS_CONCEPTS
+    template<typename T>
+    concept Contextable = requires (T context)
+    {
+        context.run();
+    };
+
+    template<typename T>
+    concept Protocolable = requires
+    {
+        typename T::socket;
+        typename T::acceptor;
+        typename T::endpoint;
+    };
+#endif
 }

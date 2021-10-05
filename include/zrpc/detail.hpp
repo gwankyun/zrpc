@@ -14,6 +14,8 @@
 #if ZRPC_HAS_CXX_11
 #  include <functional>
 #  include <memory>
+#else
+#  include <boost/make_shared.hpp>
 #endif
 
 #include <msgpack.hpp>

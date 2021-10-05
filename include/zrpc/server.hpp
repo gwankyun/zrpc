@@ -17,92 +17,14 @@
 #  include <boost/make_shared.hpp>
 #endif
 
-#include "asio.hpp"
+#include "socket.hpp"
 
 namespace zrpc
 {
-    namespace detail
-    {
-        inline const_buffer writeBuffer(const void* data, std::size_t size_in_bytes, std::size_t offset)
-        {
-            return buffer(
-                (const char*)data + offset,
-                size_in_bytes - offset);
-        }
-
-        inline mutable_buffer readBuffer(void* data, std::size_t size_in_bytes, std::size_t offset)
-        {
-            return buffer(
-                (char*)data + offset,
-                size_in_bytes - offset);
-        }
-
-        template<typename S, typename F>
-        inline void asyncWrite(S& socket, const void* data, std::size_t size_in_bytes, std::size_t offset, F fn)
-        {
-            socket.async_write_some(
-                writeBuffer(data, size_in_bytes, offset),
-                fn);
-        }
-
-        template<typename S, typename F>
-        inline void asyncRead(S& socket, void* data, std::size_t size_in_bytes, std::size_t offset, F fn)
-        {
-            socket.async_read_some(
-                readBuffer(data, size_in_bytes, offset),
-                fn);
-        }
-
-        template<typename S, typename E, typename F>
-        inline void asyncConnect(S& socket, E endpoint, F fn)
-        {
-            socket.async_connect(endpoint, fn);
-        }
-
-        template<typename S, typename T, typename F>
-        inline void asyncWait(S& socket, T& timer, F fn)
-        {
-#if ZRPC_HAS_CXX_11
-            timer.async_wait([fn, &socket](error_code error)
-                {
-                    if (error)
-                    {
-                        zdbg(error.message());
-                        return;
-                    }
-                    zdbg("timeout!");
-                    socket.close();
-                    return;
-                });
-#else
-            struct Callback
-            {
-                Callback(S& socket_, F& fn_)
-                    : socket(socket_)
-                    , fn(fn_)
-                {
-                }
-                F& fn;
-                S& socket;
-                void operator()(error_code error)
-                {
-                    if (error)
-                    {
-                        zdbg(error.message());
-                        return;
-                    }
-                    zdbg("timeout!");
-                    socket.close();
-                    return;
-                }
-            };
-            Callback callback(socket, fn);
-            timer.async_wait(callback);
+    template<typename Protocol, typename Context>
+#if ZRPC_HAS_CONCEPTS
+    requires Contextable<Context> && Protocolable<Protocol>
 #endif
-        }
-    }
-
-    template<typename Context, typename Protocol>
     class Server
     {
     public:
@@ -212,6 +134,9 @@ namespace zrpc
     };
 
     template<typename Protocol , typename Context>
+#if ZRPC_HAS_CONCEPTS
+    requires Contextable<Context> && Protocolable<Protocol>
+#endif
     void Server<Protocol, Context>::operator()(detail::error_code error, std::size_t bytes_transferred)
     {
         enable = true;
@@ -324,13 +249,16 @@ namespace zrpc
         }
     }
 
-    template<typename Context, typename Protocol>
-    Server<Context, Protocol> makeServer(
+    template<typename Protocol, typename Context>
+#if ZRPC_HAS_CONCEPTS
+    requires Contextable<Context> && Protocolable<Protocol>
+#endif
+    Server<Protocol, Context> makeServer(
         Context& context,
         Protocol protocol,
         uint16_t port
     )
     {
-        return Server<Context, Protocol>(context, protocol, port);
+        return Server<Protocol, Context>(context, protocol, port);
     }
 }

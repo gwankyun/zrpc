@@ -1,7 +1,7 @@
 ﻿#include <iostream>
 #include <string>
 #include <memory>
-//#define ZRPC_HAS_CXX_11 0
+#define ZRPC_HAS_CXX_11 0
 #define ZRPC_DEBUG 1
 #include <zrpc/server.hpp>
 //#include <dbg.h>

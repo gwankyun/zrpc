@@ -7,10 +7,11 @@
 #  include <boost/function.hpp>
 #  include <boost/tuple/tuple.hpp>
 #  include <boost/shared_ptr.hpp>
-#  include <boost/make_shared.hpp>
 #  include <boost/algorithm/hex.hpp>
 #  include <boost/smart_ptr/enable_shared_from_this.hpp>
 #  include <boost/algorithm/hex.hpp>
+#  include <boost/bind/bind.hpp>
+#  include "bind.hpp"
 #endif
 
 #ifndef ZRPC_USE_BOOST_OPTIONAL
@@ -25,6 +26,9 @@ namespace zrpc
     namespace detail
     {
         template<typename T, typename Protocol>
+#if ZRPC_HAS_CONCEPTS
+    requires Protocolable<Protocol>
+#endif
         typename optional<T>::type tryCall(Call call_, typename Protocol::socket& socket)
         {
             using namespace detail;
@@ -104,9 +108,11 @@ namespace zrpc
         };
 
         template<typename T, typename Protocol>
+#if ZRPC_HAS_CONCEPTS
+    requires Protocolable<Protocol>
+#endif
         T call(Call call_, typename Protocol::socket& socket)
         {
-
             typename optional<T>::type result = tryCall<T, Protocol>(call_, socket);
             if (result)
             {
@@ -117,6 +123,9 @@ namespace zrpc
     }
 
     template<typename Protocol, typename Context>
+#if ZRPC_HAS_CONCEPTS
+    requires Contextable<Context> && Protocolable<Protocol>
+#endif
     class Client : public ZRPC_ENABLE_SHARED_FROM_THIS< Client<Protocol, Context> >
     {
     public:
@@ -265,7 +274,7 @@ namespace zrpc
             detail::hex(*header, std::back_inserter(hex));
             zdbg(hex, hex.size());
 
-            ClientSharedPtr self(shared_from_this());
+            ClientSharedPtr self(this->shared_from_this());
             typename shared_ptr<T>::type result(ZRPC_MAKE_SHARED<T>());
 
 #if ZRPC_HAS_CXX_11
@@ -292,6 +301,11 @@ namespace zrpc
                 {
                     self->onWriteHeader<T, F>(error, size, this->result, callback, buffer);
                 }
+
+                //void call(error_code error, std::size_t size, F callback, typename shared_ptr<T>::type result, ClientSharedPtr self, typename shared_ptr<std::string>::type buffer)
+                //{
+                //    self->onWriteHeader<T, F>(error, size, result, callback, buffer);
+                //}
             };
             Callback cb(callback, result);
             cb.self = self;
@@ -301,6 +315,13 @@ namespace zrpc
                 detail::buffer((const char*)header.get(), sizeof(*header)),
                 header,
                 cb);
+
+            //Callback cb;
+            //using namespace boost::placeholders;
+            //asyncWrite(
+            //    detail::buffer((const char*)header.get(), sizeof(*header)),
+            //    header,
+            //    boost::bind(&Callback::call, cb, _1, _2, callback, result, self, buffer));
 #endif
         }
 
@@ -355,16 +376,18 @@ namespace zrpc
             detail::mutable_buffer buffer, T data,
             std::size_t count, F f)
         {
+            using namespace detail;
             if (error)
             {
                 f(error, count);
                 return;
             }
+
             std::size_t offset = count + size;
             if (offset < buffer.size())
             {
-                detail::mutable_buffer newBuffer((char*)buffer.data() + offset, buffer.size() - offset);
-                ClientSharedPtr self(shared_from_this());
+                mutable_buffer newBuffer((char*)buffer.data() + offset, buffer.size() - offset);
+                ClientSharedPtr self(this->shared_from_this());
 #if ZRPC_HAS_CXX_11
                 socket.async_read_some(
                     newBuffer,
@@ -375,25 +398,15 @@ namespace zrpc
 #else
                 struct Callback
                 {
-                    ClientSharedPtr self;
-                    detail::mutable_buffer newBuffer;
-                    T data;
-                    std::size_t offset;
-                    F f;
-                    Callback(F f_, detail::mutable_buffer newBuffer_)
-                        : f(f_)
-                        , newBuffer(newBuffer_)
-                    {
-                    }
-                    void operator()(error_code error, std::size_t size)
+                    void call(error_code error, std::size_t size, F f, detail::mutable_buffer newBuffer, T data, std::size_t offset, ClientSharedPtr self)
                     {
                         self->onAsyncRead(error, size, newBuffer, data, offset, f);
                     }
                 };
-                Callback cb(f, newBuffer);
-                cb.data = data;
-                cb.offset = offset;
-                socket.async_read_some(newBuffer, cb);
+                Callback cb;
+                socket.async_read_some(
+                    newBuffer,
+                    boost::bind(&Callback::call, &cb, _1, _2, f, newBuffer, data, offset, self));
 #endif
                 return;
             }
@@ -415,7 +428,7 @@ namespace zrpc
             if (offset < buffer.size())
             {
                 detail::const_buffer newBuffer(detail::buffer((const char*)buffer.data() + offset, buffer.size() - offset));
-                ClientSharedPtr self(shared_from_this());
+                ClientSharedPtr self(this->shared_from_this());
 #if ZRPC_HAS_CXX_11
                 socket.async_write_some(
                     newBuffer,
@@ -426,26 +439,17 @@ namespace zrpc
 #else
                 struct Callback
                 {
-                    ClientSharedPtr self;
-                    detail::const_buffer newBuffer;
-                    T data;
-                    std::size_t offset;
-                    F f;
-                    Callback(F f_, detail::const_buffer newBuffer_)
-                        : f(f_)
-                        , newBuffer(newBuffer_)
-                    {
-                    }
-                    void operator()(error_code error, std::size_t size)
+                    void call(error_code error, std::size_t size, F f, detail::const_buffer newBuffer, ClientSharedPtr self, T data, std::size_t offset)
                     {
                         self->onAsyncWrite(error, size, newBuffer, data, offset, f);
                     }
                 };
-                Callback cb(f, newBuffer);
-                cb.self = self;
-                cb.data = data;
-                cb.offset = offset;
-                socket.async_write_some(newBuffer, cb);
+
+                Callback cb;
+                using namespace detail;
+                socket.async_write_some(
+                    newBuffer,
+                    boost::bind(&Callback::call, &cb, _1, _2, f, newBuffer, self, data, offset));
 #endif
                 return;
             }
@@ -458,6 +462,7 @@ namespace zrpc
             typename shared_ptr<T>::type result, F callback,
             typename shared_ptr<detail::Header>::type header)
         {
+            using namespace detail;
             if (error)
             {
                 zdbg(error.message());
@@ -465,7 +470,7 @@ namespace zrpc
             }
             //zdbg("read header!");
             typename shared_ptr< detail::vector<char> >::type vec(ZRPC_MAKE_SHARED<detail::vector<char>>(header->length + (uint32_t)1, '\0'));
-            ClientSharedPtr self(shared_from_this());
+            ClientSharedPtr self(this->shared_from_this());
 #if ZRPC_HAS_CXX_11
             self->asyncRead(
                 detail::buffer(vec->data(), vec->size() - 1),
@@ -513,7 +518,28 @@ namespace zrpc
                     }
                     callback(error, *result);
                 }
+
+                //void call(error_code error, std::size_t size, F callback,
+                //    ClientSharedPtr self,
+                //    typename shared_ptr<T>::type result,
+                //    typename shared_ptr< detail::vector<char> >::type vec)
+                //{
+                //    if (error)
+                //    {
+                //        zdbg(error.message());
+                //        return;
+                //    }
+                //    zdbg("read buffer!");
+                //    bool u = detail::tryUnpack(vec->data(), vec->size() - 1, *result);
+                //    if (!u)
+                //    {
+                //        callback(detail::error::invalid_argument, *result);
+                //        return;
+                //    }
+                //    callback(error, *result);
+                //}
             };
+
             Callback cb(callback);
             cb.self = self;
             cb.result = result;
@@ -521,6 +547,13 @@ namespace zrpc
             self->asyncRead(
                 detail::buffer(vec->data(), vec->size() - 1),
                 vec, cb);
+
+            //Callback cb;
+            //self->asyncRead(
+            //    detail::buffer(vec->data(), vec->size() - 1),
+            //    vec,
+            //    boost::bind(&Callback::call, &cb, _1, _2, callback, self, result, vec)
+            //    );
 #endif
         }
 
@@ -536,7 +569,7 @@ namespace zrpc
                 return;
             }
             zdbg("write header!");
-            ClientSharedPtr self(shared_from_this());
+            ClientSharedPtr self(this->shared_from_this());
 
 #if ZRPC_HAS_CXX_11
             asyncWrite(
@@ -594,6 +627,14 @@ namespace zrpc
                         {
                             self->onReadHeader<T, F>(error, size, result, callback, header);
                         }
+
+                        //void call(error_code error, std::size_t size, F callback,
+                        //    typename shared_ptr<detail::Header>::type header,
+                        //    typename shared_ptr<T>::type result,
+                        //    ClientSharedPtr self)
+                        //{
+                        //    self->onReadHeader<T, F>(error, size, result, callback, header);
+                        //}
                     };
 
                     auto header = ZRPC_MAKE_SHARED<detail::Header>();
@@ -607,7 +648,72 @@ namespace zrpc
                     self->asyncRead(
                         detail::buffer((char*)header.get(), sizeof(*header)),
                         header, cb2);
+
+                    //Callback2 cb2;
+                    //using namespace boost::placeholders;
+                    //self->asyncRead(
+                    //    detail::buffer((char*)header.get(), sizeof(*header)),
+                    //    header,
+                    //    boost::bind(&Callback2::call, &cb2, _1, _2, callback, header, result, self)
+                    //    );
                 }
+
+                //void call(error_code error, std::size_t size, F callback,
+                //    ClientSharedPtr self,
+                //    typename shared_ptr<std::string>::type buffer,
+                //    typename shared_ptr<T>::type result)
+                //{
+                //    if (error)
+                //    {
+                //        zdbg(error.message());
+                //        return;
+                //    }
+                //    zdbg("write body!");
+
+                //    struct Callback2
+                //    {
+                //        Callback2(F f_)
+                //            : callback(f_)
+                //        {
+                //        }
+                //        ClientSharedPtr self;
+                //        typename shared_ptr<detail::Header>::type header;
+                //        typename shared_ptr<T>::type result;
+                //        F callback;
+                //        void operator()(error_code error, std::size_t size)
+                //        {
+                //            self->onReadHeader<T, F>(error, size, result, callback, header);
+                //        }
+
+                //        //void call(error_code error, std::size_t size, F callback,
+                //        //    typename shared_ptr<detail::Header>::type header,
+                //        //    typename shared_ptr<T>::type result,
+                //        //    ClientSharedPtr self)
+                //        //{
+                //        //    self->onReadHeader<T, F>(error, size, result, callback, header);
+                //        //}
+                //    };
+
+                //    auto header = ZRPC_MAKE_SHARED<detail::Header>();
+                //    detail::initialize(*header);
+
+                //    Callback2 cb2(callback);
+                //    cb2.header = header;
+                //    cb2.result = result;
+                //    cb2.self = self;
+
+                //    self->asyncRead(
+                //        detail::buffer((char*)header.get(), sizeof(*header)),
+                //        header, cb2);
+
+                //    //Callback2 cb2;
+                //    //using namespace boost::placeholders;
+                //    //self->asyncRead(
+                //    //    detail::buffer((char*)header.get(), sizeof(*header)),
+                //    //    header,
+                //    //    boost::bind(&Callback2::call, &cb2, _1, _2, callback, header, result, self)
+                //    //    );
+                //}
             };
             Callback cb(callback);
             cb.self = self;
@@ -617,13 +723,21 @@ namespace zrpc
             asyncWrite(
                 detail::buffer(buffer->c_str(), buffer->size()),
                 buffer, cb);
+            //Callback cb;
+            //using namespace detail;
+            //asyncWrite(
+            //    detail::buffer(buffer->c_str(), buffer->size()),
+            //    buffer,
+            //    boost::bind(&Callback::call, &cb, _1, _2, callback, self, buffer, result)
+            //);
 #endif
         }
 
         template<typename T, typename F>
         void asyncRead(detail::mutable_buffer buffer, T data, F f)
         {
-            ClientSharedPtr self(shared_from_this());
+            using namespace detail;
+            ClientSharedPtr self(this->shared_from_this());
 
 #if ZRPC_HAS_CXX_11
             socket.async_read_some(
@@ -635,31 +749,23 @@ namespace zrpc
 #else
             struct Callback
             {
-                Callback(detail::mutable_buffer buffer_, F f_)
-                    : buffer(buffer_)
-                    , f(f_)
-                {
-                }
-                ClientSharedPtr self;
-                detail::mutable_buffer buffer;
-                T data;
-                F f;
-                void operator()(error_code error, std::size_t size)
+                void call(error_code error, std::size_t size, detail::mutable_buffer buffer, F f, T data, ClientSharedPtr self)
                 {
                     self->onAsyncRead(error, size, buffer, data, 0, f);
                 }
             };
-            Callback cb(buffer, f);
-            cb.data = data;
-            cb.self = self;
-            socket.async_read_some(buffer, cb);
-#endif // false && ZRPC_HAS_CXX_11
+            Callback cb;
+            socket.async_read_some(
+                buffer,
+                boost::bind(&Callback::call, &cb, _1, _2, buffer, f, data, self));
+#endif
         }
 
         template<typename T, typename F>
         void asyncWrite(detail::const_buffer buffer, T data, F f)
         {
-            ClientSharedPtr self(shared_from_this());
+            using namespace detail;
+            ClientSharedPtr self(this->shared_from_this());
 
 #if ZRPC_HAS_CXX_11
             socket.async_write_some(
@@ -671,29 +777,23 @@ namespace zrpc
 #else
             struct Callback
             {
-                Callback(detail::const_buffer buffer_, F f_)
-                    : buffer(buffer_)
-                    , f(f_)
-                {
-                }
-                ClientSharedPtr self;
-                detail::const_buffer buffer;
-                T data;
-                F f;
-                void operator()(error_code error, std::size_t size)
+                void call(error_code error, std::size_t size, detail::const_buffer buffer, F f, T data, ClientSharedPtr self)
                 {
                     self->onAsyncWrite(error, size, buffer, data, 0, f);
                 }
             };
-            Callback cb(buffer, f);
-            cb.data = data;
-            cb.self = self;
-            socket.async_write_some(buffer, cb);
+            Callback cb;
+            socket.async_write_some(
+                buffer,
+                boost::bind(&Callback::call, &cb, _1, _2, buffer, f, data, self));
 #endif
         }
     };
 
     template<typename Protocol, typename Context>
+#if ZRPC_HAS_CONCEPTS
+    requires Contextable<Context> && Protocolable<Protocol>
+#endif
     Client<Protocol, Context> makeClient(Context& context)
     {
         return Client<Protocol, Context>(context);
