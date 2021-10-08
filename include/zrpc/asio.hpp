@@ -43,5 +43,17 @@ namespace zrpc
         typename T::acceptor;
         typename T::endpoint;
     };
+
+    template<typename F>
+    concept AsioCallbackable = requires (F cb, error_code error, std::size_t size)
+    {
+        cb(error, size);
+    };
+
+    template<typename F, typename T>
+    concept Callbackable = requires (F cb, error_code error, T value)
+    {
+        cb(error, value);
+    };
 #endif
 }

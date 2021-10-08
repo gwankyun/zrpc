@@ -14,6 +14,7 @@
 #if ZRPC_HAS_CXX_11
 #  include <functional>
 #  include <memory>
+#  include <vector>
 #else
 #  include <boost/make_shared.hpp>
 #endif
@@ -75,6 +76,9 @@ namespace zrpc
             MSGPACK_DEFINE(func, args);
         };
 
+#if ZRPC_HAS_CXX_11
+        using std::vector;
+#else
         template<typename T>
         class vector
         {
@@ -114,6 +118,7 @@ namespace zrpc
             T* data_;
             std::size_t size_;
         };
+#endif
 
         struct ICallable
         {

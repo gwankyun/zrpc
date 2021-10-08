@@ -18,6 +18,7 @@
 #endif
 
 #include "socket.hpp"
+//#include <boost/asio/spawn.hpp>
 
 namespace zrpc
 {
@@ -69,6 +70,11 @@ namespace zrpc
         }
 
         void operator()(detail::error_code error = detail::error_code(), std::size_t bytes_transferred = 0);
+
+        //void run()
+        //{
+        //    asio::spawn()
+        //}
 
     private:
         detail::coroutine coro;
@@ -183,7 +189,7 @@ namespace zrpc
                 detail::hex(*header, std::back_inserter(*hex));
                 zdbg(*hex, hex->size());
 
-                recv.reset(new detail::vector<char>(header->length + 1, '\0'));
+                recv.reset(new vector<char>(header->length + 1, '\0'));
                 offset = 0;
                 do
                 {

@@ -64,7 +64,7 @@ target_include_directories(${target}
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
 )
 
-find_package(Boost REQUIRED)
+find_package(Boost REQUIRED COMPONENTS context)
 
 # set(has_include_DIR config/has_include/lib/cmake/has_include)
 find_package(has_include CONFIG REQUIRED)
@@ -75,7 +75,9 @@ find_package(preprocessor CONFIG REQUIRED)
 find_package(apply CONFIG REQUIRED)
 find_package(msgpack CONFIG REQUIRED)
 
-target_link_libraries(${target} INTERFACE apply::apply Boost::headers has_include::has_include preprocessor::preprocessor msgpackc-cxx)
+target_link_directories(${target} INTERFACE ${Boost_LIBRARY_DIRS})
+
+target_link_libraries(${target} INTERFACE apply::apply Boost::headers has_include::has_include preprocessor::preprocessor msgpackc-cxx Boost::context)
 
 target_compile_definitions(${target} INTERFACE "ENABLE_HAS_INCLUDE_TEST=0;ZRPC_HAS_CXX_11=$<BOOL:${ZRPC_HAS_CXX_11}>")
 
@@ -99,10 +101,13 @@ target_sources(main PRIVATE
 target_link_libraries(main zrpc)
 target_compile_features(main PRIVATE cxx_std_20)
 
+cmake_print_variables(Boost_LIBRARY_DIRS)
+
 set(server server)
 add_executable(${server})
 target_sources(${server} PRIVATE src/server.cpp include/log.hpp)
 target_compile_features(${server} PRIVATE cxx_std_20)
+target_link_directories(${server} PRIVATE ${Boost_LIBRARY_DIRS})
 target_link_libraries(${server} zrpc)
 target_compile_definitions(${server} PRIVATE "ZRPC_HAS_CXX_11=$<BOOL:${ZRPC_SERVER_USE_CXX_11}>")
 
