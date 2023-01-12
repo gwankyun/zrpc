@@ -67,17 +67,41 @@ target_include_directories(${target}
 find_package(Boost REQUIRED COMPONENTS context)
 
 # set(has_include_DIR config/has_include/lib/cmake/has_include)
-find_package(has_include CONFIG REQUIRED)
+# find_package(has_include CONFIG REQUIRED)
+# add_subdirectory(has_include)
+
+if(NOT(TARGET has_include) AND (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/has_include))
+  add_subdirectory(has_include)
+endif()
 
 # add_subdirectory(third_party/has_include)
 
-find_package(preprocessor CONFIG REQUIRED)
-find_package(apply CONFIG REQUIRED)
-find_package(msgpack CONFIG REQUIRED)
+# find_package(preprocessor CONFIG REQUIRED)
+# add_subdirectory(preprocessor)
+
+if(NOT(TARGET preprocessor) AND (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/preprocessor))
+  add_subdirectory(preprocessor)
+endif()
+
+# find_package(apply CONFIG REQUIRED)
+add_subdirectory(apply)
+# find_package(msgpack CONFIG REQUIRED)
+# find_package(msgpack-cxx CONFIG REQUIRED)
+find_package(msgpackc-cxx CONFIG REQUIRED)
 
 target_link_directories(${target} INTERFACE ${Boost_LIBRARY_DIRS})
 
-target_link_libraries(${target} INTERFACE apply::apply Boost::headers has_include::has_include preprocessor::preprocessor msgpackc-cxx Boost::context)
+# target_link_libraries(${target} INTERFACE apply::apply Boost::headers has_include::has_include preprocessor::preprocessor msgpackc-cxx Boost::context)
+target_link_libraries(${target} INTERFACE
+  apply
+  Boost::headers
+  # has_include
+  $<TARGET_NAME_IF_EXISTS:has_include>
+  # preprocessor
+  $<TARGET_NAME_IF_EXISTS:preprocessor>
+  msgpackc-cxx
+  Boost::context
+)
 
 target_compile_definitions(${target} INTERFACE "ENABLE_HAS_INCLUDE_TEST=0;ZRPC_HAS_CXX_11=$<BOOL:${ZRPC_HAS_CXX_11}>")
 
